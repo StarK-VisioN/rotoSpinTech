@@ -33,21 +33,5 @@
 - Production Staff: Add daily molds and finished goods.
 - Raw Material Handler: Update stock entries and usage.
 
----
 
-## 🛠️ Tech Stack
-
-| Technology      | Description                                  |
-|-----------------|----------------------------------------------|
-| **Frontend**    | React.js, Tailwind CSS, Redux Toolkit        |
-| **Backend**     | Node.js, Express.js                          |
-| **Database**    | PostgreSQL / MongoDB (based on version used) |
-| **Auth**        | JWT, OAuth 2.0                               |
-| **Real-Time**   | Kafka (optional for production pipeline)     |
-| **Reporting**   | PDFKit / ExcelJS                             |
-| **Deployment**  | Docker, Nginx, PM2                           |
-
----
-
-## 📁 Folder Structure
 
