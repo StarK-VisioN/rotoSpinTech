@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 
 const EntryForm = () => {
-  const [clientName, setClientName] = useState('xyz');
+  const [clientName, setClientName] = useState('AEROMARINE');
   const [isEditingClient, setIsEditingClient] = useState(false);
 
-  const [productName, setProductName] = useState('');
-  const [productSize, setProductSize] = useState('');
+  const [productModel, setProductModel] = useState('');
   const [productColor, setProductColor] = useState('');
   const [quantity, setQuantity] = useState('');
   const [date, setDate] = useState('');
@@ -22,8 +21,7 @@ const EntryForm = () => {
     e.preventDefault();
     console.log({
       clientName,
-      productName,
-      productSize,
+      productModel,
       productColor,
       quantity,
       date,
@@ -70,32 +68,17 @@ const EntryForm = () => {
           </div>
         </div>
 
-        {/* Row: Product Name, Size, Color */}
+        {/* Row: Product Size, Color */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
-            <label className="block mb-1 font-bold">Product Name</label>
+            <label className="block mb-1 font-bold">Product Model</label>
             <select
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
+              value={productModel}
+              onChange={(e) => setProductModel(e.target.value)}
               className="w-full px-3 py-2 border rounded"
               required
             >
-              <option value="" disabled>Select Product</option>
-              <option value="a">a</option>
-              <option value="b">b</option>
-              <option value="c">c</option>
-            </select>
-          </div>
-
-          <div className="flex-1">
-            <label className="block mb-1 font-bold">Product Size</label>
-            <select
-              value={productSize}
-              onChange={(e) => setProductSize(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-              required
-            >
-              <option value="" disabled>Select Size</option>
+              <option value="" disabled>Select Model</option>
               <option value="750">750</option>
               <option value="1250">1250</option>
               <option value="1500">1500</option>
@@ -161,6 +144,7 @@ const EntryForm = () => {
 };
 
 export default EntryForm;
+
 
 
 
