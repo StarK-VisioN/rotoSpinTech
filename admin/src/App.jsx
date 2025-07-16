@@ -8,6 +8,7 @@ import Orders from './pages/Orders';
 import RawMaterial from './pages/RawMaterial';
 import Report from './pages/Report';
 import Overall from './pages/Overall'
+import EntryForm from './pages/EntryForm';
 
 function App() {
 
@@ -17,11 +18,11 @@ function App() {
         <>
           <Navbar />
           <hr />
-          <div className="flex w-full">
-            <Sidebar />
-            <div className="w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base">
+            {/* <Sidebar /> */}
+            <div className="w-full text-gray-600 text-base">
               <Routes>
                 <Route path="/overall" element={<Overall />} />
+                <Route path="/entryform" element={<EntryForm />} />
                 <Route path="/addworker" element={<AddWorker />} />
                 <Route path="/add" element={<AddStock />} />
                 <Route path="/orders" element={<Orders />} />
@@ -29,7 +30,7 @@ function App() {
                 <Route path="/raw" element={<RawMaterial />} />
               </Routes>
             </div>
-          </div>
+       
         </>
 
     </div>
