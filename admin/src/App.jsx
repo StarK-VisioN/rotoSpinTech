@@ -22,7 +22,7 @@ function App() {
             {/* <Sidebar /> */}
             <div className="w-full text-gray-600 text-base">
               <Routes>
-                <Route path="/overall" element={<Overall />} />
+                <Route path="/" element={<Overall />} />
                 <Route path="/entryform" element={<EntryForm />} />
                 <Route path="/addworker" element={<AddWorker />} />
                 <Route path="/add" element={<AddStock />} />
@@ -40,3 +40,10 @@ function App() {
 }
 
 export default App
+
+
+/*
+re - 6:30 ch 220rs
+p - 6 - 240rs
+
+*/

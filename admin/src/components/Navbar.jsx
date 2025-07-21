@@ -9,11 +9,11 @@ const Navbar = () => {
   return (
     <div className="flex items-center justify-between py-2 px-[4%] relative">
       {/* Logo and title */}
-      <Link to='/overall'> <img src={assets.logo} className="w-25 rounded-xl" alt="logo_img" /> <span className='text-md font-bold'><p>Admin Panel.</p></span></Link>
+      <Link to='/'> <img src={assets.logo} className="w-25 rounded-xl" alt="logo_img" /> <span className='text-md font-bold'><p>Admin Panel.</p></span></Link>
 
       <ul className="hidden sm:flex gap-8 text-sm text-gray-700">
         <NavLink
-          to="/overall"
+          to="/"
           className={({ isActive }) => isActive ? "text-blue-600 font-semibold" : "text-gray-700"}
         >
           Over All
