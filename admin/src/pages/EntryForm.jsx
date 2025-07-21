@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Title from '../components/Title';
 
 const EntryForm = () => {
   const [clientName, setClientName] = useState('AEROMARINE');
@@ -30,12 +31,18 @@ const EntryForm = () => {
   };
 
   return (
+    <div className='text-left px-14 py-8'>
+      <div className='text-3xl'>
+
+      <Title text1={"ENTRY PRODUCT"} text2={"FORM"}/>   
+      </div>
+    
     <div className="flex items-center justify-center pt-15">
       <form
         onSubmit={onSubmitHandler}
         className="flex flex-col w-1/2 gap-6 p-6 border rounded shadow"
       >
-        <h2 className="text-2xl font-bold mb-2 text-center">Entry Product Form</h2>
+        {/* <h2 className="text-2xl font-bold mb-2 text-center">Entry Product Form</h2> */}
 
         {/* Client Name with Edit */}
         <div>
@@ -139,6 +146,7 @@ const EntryForm = () => {
           Submit
         </button>
       </form>
+      </div>
     </div>
   );
 };

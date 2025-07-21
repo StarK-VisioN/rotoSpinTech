@@ -27,24 +27,31 @@ const Navbar = () => {
         </NavLink>
 
         <NavLink
-          to="/addworker"
+          to="/orders"
           className={({ isActive }) => isActive ? "text-blue-600 font-semibold" : "text-gray-700"}
         >
-          Add New Worker
+          New Orders
         </NavLink>
 
-        <NavLink
+        {/* <NavLink
           to="/add"
           className={({ isActive }) => isActive ? "text-blue-600 font-semibold" : "text-gray-700"}
         >
           Add Stock
+        </NavLink> */}
+
+        <NavLink
+          to="/raw"
+          className={({ isActive }) => isActive ? "text-blue-600 font-semibold" : "text-gray-700"}
+        >
+          View Stock
         </NavLink>
 
         <NavLink
-          to="/orders"
+          to="/addworker"
           className={({ isActive }) => isActive ? "text-blue-600 font-semibold" : "text-gray-700"}
         >
-          Place New Order
+          Add New Worker
         </NavLink>
 
         <NavLink
@@ -55,10 +62,10 @@ const Navbar = () => {
         </NavLink>
 
         <NavLink
-          to="/raw"
+          to="/prediction"
           className={({ isActive }) => isActive ? "text-blue-600 font-semibold" : "text-gray-700"}
         >
-          View Raw Material
+          Predict Now
         </NavLink>
       </ul>
 
@@ -110,23 +117,30 @@ const Navbar = () => {
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"
-            to="/addworker"
+            to="/orders"
           >
-            Add New Worker
+            New Orders
           </NavLink>
-          <NavLink
+          {/* <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"
             to="/add"
           >
             Add Stock
+          </NavLink> */}
+          <NavLink
+            onClick={() => setVisible(false)}
+            className="py-2 pl-6 border border-gray-200"
+            to="/raw"
+          >
+            View Stock
           </NavLink>
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"
-            to="/orders"
+            to="/addworker"
           >
-            Place New Order
+            Add New Worker
           </NavLink>
           <NavLink
             onClick={() => setVisible(false)}
@@ -138,9 +152,9 @@ const Navbar = () => {
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"
-            to="/raw"
+            to="/report"
           >
-            View Raw Material
+            Predict Now
           </NavLink>
         </div>
       </div>

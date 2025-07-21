@@ -9,6 +9,7 @@ import RawMaterial from './pages/RawMaterial';
 import Report from './pages/Report';
 import Overall from './pages/Overall'
 import EntryForm from './pages/EntryForm';
+import Prediction from './pages/Prediction';
 
 function App() {
 
@@ -28,6 +29,7 @@ function App() {
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/report" element={<Report />} />
                 <Route path="/raw" element={<RawMaterial />} />
+                <Route path="/prediction" element={<Prediction />} />
               </Routes>
             </div>
        

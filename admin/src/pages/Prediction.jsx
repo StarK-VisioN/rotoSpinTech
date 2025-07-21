@@ -1,12 +1,12 @@
 import React from 'react'
 import Title from '../components/Title'
 
-const Overall = () => {
+const Prediction = () => {
   return (
     <div className='text-left px-14 py-8 text-3xl'>
-      <Title text1={"OVER"} text2={"ALL"}/>   
+      <Title text1={"PREDICT"} text2={"NOW"}/>   
     </div>
   )
 }
 
-export default Overall
+export default Prediction
