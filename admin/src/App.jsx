@@ -8,6 +8,8 @@ import Orders from './pages/Orders';
 import RawMaterial from './pages/RawMaterial';
 import Report from './pages/Report';
 import Overall from './pages/Overall'
+import EntryForm from './pages/EntryForm';
+import Prediction from './pages/Prediction';
 
 function App() {
 
@@ -17,19 +19,20 @@ function App() {
         <>
           <Navbar />
           <hr />
-          <div className="flex w-full">
-            <Sidebar />
-            <div className="w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base">
+            {/* <Sidebar /> */}
+            <div className="w-full text-gray-600 text-base">
               <Routes>
-                <Route path="/overall" element={<Overall />} />
+                <Route path="/" element={<Overall />} />
+                <Route path="/entryform" element={<EntryForm />} />
                 <Route path="/addworker" element={<AddWorker />} />
                 <Route path="/add" element={<AddStock />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/report" element={<Report />} />
                 <Route path="/raw" element={<RawMaterial />} />
+                <Route path="/prediction" element={<Prediction />} />
               </Routes>
             </div>
-          </div>
+       
         </>
 
     </div>
@@ -37,3 +40,10 @@ function App() {
 }
 
 export default App
+
+
+/*
+re - 6:30 ch 220rs
+p - 6 - 240rs
+
+*/

@@ -1,8 +1,11 @@
 import React from 'react'
+import Title from '../components/Title'
 
 const Orders = () => {
   return (
-    <div>Orders</div>
+    <div className='text-left px-14 py-8 text-3xl'>
+      <Title text1={"NEW"} text2={"ORDER"}/>   
+    </div>
   )
 }
 
