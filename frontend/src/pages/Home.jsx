@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../utils/axiosInstance";
-import { API_PATHS } from "../../utils/apiPaths";
+import Title from "../components/Title";
 import { getProfile } from "../../utils/authService";
 
 const Home = () => {
@@ -21,14 +20,30 @@ const Home = () => {
     fetchProfile();
   }, []);
 
-  if (error) return <p className="text-red-500">{error}</p>;
-  if (!profile) return <p>Loading profile...</p>;
+  if (error)
+    return (
+      <div className="text-center pt-8">
+        <p className="text-red-500">{error}</p>
+      </div>
+    );
+
+  if (!profile)
+    return (
+      <div className="text-center pt-8">
+        <p>Loading profile...</p>
+      </div>
+    );
 
   return (
     <div>
-      <h1>Welcome, {profile.name}</h1>
-      <p>Position: {profile.position}</p>
-      <p>Working ID: {profile.working_id}</p>
+      <div className="text-2xl text-center pt-8 border-t">
+        <Title text1={"HOME"} text2={"PAGE"} />
+      </div>
+      <div className="text-center mt-8">
+        <h2 className="text-xl font-semibold">Welcome, {profile.name}</h2>
+        <p>Position: {profile.position}</p>
+        <p>Working ID: {profile.working_id}</p>
+      </div>
     </div>
   );
 };

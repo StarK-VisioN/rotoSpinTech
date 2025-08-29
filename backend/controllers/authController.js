@@ -3,10 +3,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 // Generate JWT token
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const generateToken = (userId, position) => {
+  return jwt.sign({ id: userId, role: position }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 };
-
 // @desc    Register a new user
 // @route   POST /api/auth/signup
 // @access  Public
@@ -41,7 +42,7 @@ const signupUser = async (req, res) => {
     res.status(201).json({
       message: "User created successfully",
       user,
-      token: generateToken(user.id),
+      token: generateToken(user.id, user.position),
     });
   } catch (err) {
     console.error("Signup Error:", err.message);
@@ -73,8 +74,10 @@ const loginUser = async (req, res) => {
       name: user.name,
       position: user.position,
       workingId: user.working_id,
-      token: generateToken(user.id),
+      token: generateToken(user.id, user.position),
+      redirectPath: `/${user.position.toLowerCase()}/home`
     });
+    
   } catch (err) {
     console.error("Login Error:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });

@@ -25,7 +25,7 @@ const protect = async (req, res, next) => {
       }
 
       // Attach user to request
-      req.user = user;
+      req.user = { ...user, role: decoded.role };
       next();
     } else {
       res.status(401).json({ message: "Not authorized, no token" });

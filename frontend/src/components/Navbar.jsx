@@ -1,29 +1,37 @@
 import React, { useState } from "react";
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assests.js";
 
 const Navbar = () => {
   const [visible, setVisible] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Get user role from localStorage
+  const user = JSON.parse(localStorage.getItem("user"));
+  const role = user?.position?.toLowerCase() || "";
+
+  // Determine role-based Home path
+  const homePath = role ? `/${role}/home` : "/home";
+
+  // Active check for Home link
+  const isHomeActive = location.pathname === homePath;
 
   return (
     <div className="flex items-center justify-between py-5 font-medium">
       {/* Logo */}
       <Link to="/">
-        {assets.logo ? (
-          <img src={assets.logo} className="w-36" alt="logo_img" />
-        ) : null}
+        {assets.logo && <img src={assets.logo} className="w-36" alt="logo_img" />}
       </Link>
 
       {/* Desktop Menu */}
       <ul className="hidden sm:flex gap-5 text-sm text-gray-700">
-        <NavLink
-          to="/"
-          className={({ isActive }) =>
-            isActive ? "text-blue-600 font-semibold" : "text-gray-700"
-          }
+        <li
+          onClick={() => navigate(homePath)}
+          className={`${isHomeActive ? "text-blue-600 font-semibold" : "text-gray-700"} cursor-pointer`}
         >
           Home
-        </NavLink>
+        </li>
 
         <NavLink
           to="/production"
@@ -73,7 +81,6 @@ const Navbar = () => {
 
       {/* Right Icons */}
       <div className="flex items-center gap-6">
-        {/* Profile */}
         <div className="group relative">
           {assets.profile_icon && (
             <img
@@ -86,12 +93,19 @@ const Navbar = () => {
           <div className="group-hover:block hidden absolute dropdown-menu right-0 pt-4">
             <div className="flex flex-col gap-2 w-36 py-3 px-5 bg-slate-100 text-gray-500 rounded">
               <p className="cursor-pointer hover:text-black">My Profile</p>
-              <p className="cursor-pointer hover:text-black">Logout</p>
+              <p
+                className="cursor-pointer hover:text-black"
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = "/";
+                }}
+              >
+                Logout
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Hamburger Menu */}
         {assets.menu_icon && (
           <img
             onClick={() => setVisible(true)}
@@ -123,13 +137,18 @@ const Navbar = () => {
             <p>Back</p>
           </div>
 
-          <NavLink
-            onClick={() => setVisible(false)}
-            className="py-2 pl-6 border border-gray-200"
-            to="/"
+          <button
+            onClick={() => {
+              setVisible(false);
+              navigate(homePath); // Navigate to role-based Home
+            }}
+            className={`py-2 pl-6 border border-gray-200 ${
+              isHomeActive ? "text-blue-600 font-semibold" : "text-gray-700"
+            } text-left`}
           >
             Home
-          </NavLink>
+          </button>
+
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"
@@ -137,6 +156,7 @@ const Navbar = () => {
           >
             Production
           </NavLink>
+
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"
@@ -144,6 +164,7 @@ const Navbar = () => {
           >
             Material
           </NavLink>
+
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"
@@ -151,6 +172,7 @@ const Navbar = () => {
           >
             Stock In
           </NavLink>
+
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"
@@ -158,6 +180,7 @@ const Navbar = () => {
           >
             Stock Out
           </NavLink>
+
           <NavLink
             onClick={() => setVisible(false)}
             className="py-2 pl-6 border border-gray-200"

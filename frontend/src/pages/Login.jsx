@@ -14,7 +14,6 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate inputs
     if (!validateWorkingId(workingId)) {
       setError("Enter a valid Working ID");
       return;
@@ -24,24 +23,24 @@ const Login = () => {
       return;
     }
 
-    setError(""); // clear previous errors
+    setError("");
 
     try {
-      // Call backend login API
       const res = await axiosInstance.post(API_PATHS.AUTH.LOGIN, {
         workingId,
         password,
       });
 
-      const { token, name, position } = res.data;
+      const { token, name, position, redirectPath } = res.data;
 
-      // Store token and user info in localStorage
+      // Save everything to localStorage
       localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(res.data)); 
       localStorage.setItem("name", name);
       localStorage.setItem("position", position);
 
-      // Navigate to Home page after successful login
-      navigate("/home");
+      // Redirect based on role
+      navigate(`/${position.toLowerCase()}/home`);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Login failed. Try again!");
