@@ -30,7 +30,7 @@ function Login() {
                             <div className="mt-2">
                                 <input
                                     id="email"
-                                    type="email"
+                                    type="text"
                                     name="email"
                                     required=""
                                     autoComplete="email"

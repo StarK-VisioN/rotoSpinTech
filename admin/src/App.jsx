@@ -42,8 +42,3 @@ function App() {
 export default App
 
 
-/*
-re - 6:30 ch 220rs
-p - 6 - 240rs
-
-*/
