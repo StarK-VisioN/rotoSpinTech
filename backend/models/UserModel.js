@@ -1,6 +1,6 @@
-import pool from "../config/db.js";
+const pool = require("../config/db");
 
-export async function createUser(name, position, workingId, password) {
+async function createUser(name, position, workingId, password) {
   const query = `
     INSERT INTO users (name, position, working_id, password)
     VALUES ($1, $2, $3, $4)
@@ -12,10 +12,15 @@ export async function createUser(name, position, workingId, password) {
   return rows[0];
 }
 
-export async function findUserByWorkingId(workingId) {
+async function findUserByWorkingId(workingId) {
   const { rows } = await pool.query(
     "SELECT * FROM users WHERE working_id = $1",
     [workingId]
   );
   return rows[0];
 }
+
+module.exports = {
+  createUser,
+  findUserByWorkingId,
+};
