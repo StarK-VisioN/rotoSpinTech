@@ -21,7 +21,7 @@ function App() {
         
         <Routes>
           <Route path="/" element={<Login />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/home" element={localStorage.getItem("token") ? <Home /> : <Login />} />
           <Route path="/material" element={<Material />} />
           <Route path="/production" element={<Production />} />
           <Route path="/stockin" element={<Stockin />} />
