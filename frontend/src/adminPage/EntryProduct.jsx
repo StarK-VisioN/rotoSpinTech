@@ -1,261 +1,301 @@
-import React, { useState } from "react";
-import { Plus, Edit, Trash } from "lucide-react";
+// EntryProduct.jsx
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { Trash2, Edit2, X } from "lucide-react";
+
+const BASE_URL = import.meta.env.VITE_APP_BACKEND_URL;
+
+const colorMap = {
+  yellow: "#FFD700",
+  black: "#000000",
+  red: "#FF0000",
+  green: "#008000",
+};
+
+const productNames = ["750", "1250", "1500", "1750", "2250", "3000", "2600", "2000"];
 
 const EntryProduct = () => {
-  const [entries, setEntries] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editIndex, setEditIndex] = useState(null);
+  const [formVisible, setFormVisible] = useState(false);
+  const [clientName, setClientName] = useState("AeroMarine");
+  const [isEditable, setIsEditable] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  const [form, setForm] = useState({
-    clientName: "AeroMarine",
+  const [formData, setFormData] = useState({
     productName: "",
-    productSize: "",
     productColor: "",
     quantity: "",
-    date: new Date().toISOString().split("T")[0], // Default today’s date
+    date: "",
   });
 
-  const productNames = ["a", "b", "c", "d"];
-  const productSizes = [
-    "750",
-    "1250",
-    "1500",
-    "1750",
-    "2250",
-    "3000",
-    "2600",
-    "2000",
-  ];
-  const productColors = ["yellow", "black", "red", "green"];
+  const [entries, setEntries] = useState([]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (editIndex !== null) {
-      const updatedEntries = [...entries];
-      updatedEntries[editIndex] = form;
-      setEntries(updatedEntries);
-      setEditIndex(null);
-    } else {
-      setEntries([...entries, form]);
+  const fetchEntries = async () => {
+    try {
+      const token = JSON.parse(localStorage.getItem("user"))?.token;
+      const res = await axios.get(`${BASE_URL}/api/entry-products`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setEntries(res.data);
+    } catch (err) {
+      console.error("Fetch Entries Error:", err.message);
     }
+  };
 
-    setForm({
-      clientName: "AeroMarine",
-      productName: "",
-      productSize: "",
-      productColor: "",
-      quantity: "",
-      date: new Date().toISOString().split("T")[0],
+  useEffect(() => {
+    fetchEntries();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const token = JSON.parse(localStorage.getItem("user"))?.token;
+    try {
+      if (editingId) {
+        await axios.put(`${BASE_URL}/api/entry-products/${editingId}`, { clientName, ...formData }, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast.success("Product entry updated successfully!");
+      } else {
+        await axios.post(`${BASE_URL}/api/entry-products`, { clientName, ...formData }, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast.success("Product entry added successfully!");
+      }
+      setFormData({ productName: "", productColor: "", quantity: "", date: "" });
+      setEditingId(null);
+      setFormVisible(false);
+      fetchEntries();
+    } catch (err) {
+      console.error("Submit Error:", err.message);
+      toast.error("Error submitting entry!");
+    }
+  };
+
+  const handleEdit = (entry) => {
+    setFormVisible(true);
+    setEditingId(entry.id);
+    setClientName(entry.client_name);
+    setFormData({
+      productName: entry.product_name,
+      productColor: entry.product_color,
+      quantity: entry.quantity,
+      date: entry.date.split("T")[0],
     });
-    setShowForm(false);
+    toast.info("Editing mode enabled");
   };
 
-  const handleEdit = (index) => {
-    setForm(entries[index]);
-    setEditIndex(index);
-    setShowForm(true);
-  };
+  const handleDelete = (id) => {
+    const confirmToast = ({ closeToast }) => (
+      <div>
+        <p>Are you sure you want to delete this entry?</p>
+        <div className="flex justify-end mt-2 gap-2">
+          <button
+            className="bg-red-600 text-white px-2 py-1 rounded"
+            onClick={async () => {
+              try {
+                const token = JSON.parse(localStorage.getItem("user"))?.token;
+                await axios.delete(`${BASE_URL}/api/entry-products/${id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                fetchEntries();
+                toast.dismiss();
+                toast.success("Entry deleted successfully!");
+              } catch (err) {
+                console.error(err);
+                toast.error("Error deleting entry!");
+              }
+            }}
+          >
+            Yes
+          </button>
+          <button
+            className="bg-gray-300 px-2 py-1 rounded"
+            onClick={() => toast.dismiss()}
+          >
+            No
+          </button>
+        </div>
+      </div>
+    );
 
-  const handleDelete = (index) => {
-    const updatedEntries = entries.filter((_, i) => i !== index);
-    setEntries(updatedEntries);
+    toast.info(confirmToast, { autoClose: false });
   };
 
   return (
-    <div className="p-6">
-      {/* Top Bar */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Entry Products</h1>
+    <div className="mt-10">
+      <ToastContainer />
+
+      {/* Top-right New Entry Product Button */}
+      <div className="flex justify-end mb-4">
         <button
-          onClick={() => {
-            setShowForm(!showForm);
-            setEditIndex(null);
-            setForm({
-              clientName: "AeroMarine",
-              productName: "",
-              productSize: "",
-              productColor: "",
-              quantity: "",
-              date: new Date().toISOString().split("T")[0],
-            });
-          }}
-          className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg"
+          onClick={() => setFormVisible(true)}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
-          <Plus size={18} className="mr-2" />
           New Entry Product
         </button>
       </div>
 
-      {/* Form */}
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-gray-100 p-4 rounded-lg mb-6 grid grid-cols-2 gap-4"
-        >
-          {/* Client Name */}
-          <div>
-            <label className="block text-sm font-medium">Client Name</label>
-            <input
-              type="text"
-              name="clientName"
-              value={form.clientName}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
+      {/* Form Modal */}
+      {formVisible && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-start pt-20 z-50">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-lg relative shadow-lg">
+            {/* Close Icon */}
+            <X
+              size={28}
+              className="absolute top-3 right-3 text-red-600 cursor-pointer hover:text-red-800"
+              onClick={() => {
+                setFormVisible(false);
+                setEditingId(null);
+                setFormData({ productName: "", productColor: "", quantity: "", date: "" });
+              }}
             />
-          </div>
 
-          {/* Date */}
-          <div>
-            <label className="block text-sm font-medium">Date</label>
-            <input
-              type="date"
-              name="date"
-              value={form.date}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-              required
-            />
-          </div>
+            <h2 className="text-2xl font-bold mb-6 text-center">{editingId ? "Edit Entry Product" : "New Entry Product"}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Product Name */}
-          <div>
-            <label className="block text-sm font-medium">Product Name</label>
-            <select
-              name="productName"
-              value={form.productName}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-              required
-            >
-              <option value="">Select product</option>
-              {productNames.map((name, i) => (
-                <option key={i} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
+              {/* Client Name */}
+              <div>
+                <label className="block font-semibold mb-1">Client Name</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    disabled={!isEditable}
+                    className="border p-2 rounded w-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsEditable(!isEditable)}
+                    className="px-3 py-2 bg-blue-500 text-white rounded"
+                  >
+                    {isEditable ? "Lock" : "Edit"}
+                  </button>
+                </div>
+              </div>
 
-          {/* Product Size */}
-          <div>
-            <label className="block text-sm font-medium">Product Size</label>
-            <select
-              name="productSize"
-              value={form.productSize}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-              required
-            >
-              <option value="">Select size</option>
-              {productSizes.map((size, i) => (
-                <option key={i} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </div>
+              {/* Product Name */}
+              <div>
+                <label className="block font-semibold mb-1">Product Name</label>
+                <select
+                  name="productName"
+                  value={formData.productName}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                  required
+                >
+                  <option value="">Select Product Name</option>
+                  {productNames.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Product Color */}
-          <div>
-            <label className="block text-sm font-medium">Product Color</label>
-            <select
-              name="productColor"
-              value={form.productColor}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-              required
-            >
-              <option value="">Select color</option>
-              {productColors.map((color, i) => (
-                <option key={i} value={color}>
-                  {color}
-                </option>
-              ))}
-            </select>
-          </div>
+              {/* Product Color */}
+              <div>
+                <label className="block font-semibold mb-1">Product Color</label>
+                <select
+                  name="productColor"
+                  value={formData.productColor}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                  required
+                >
+                  <option value="">Select Color</option>
+                  {Object.keys(colorMap).map((color) => (
+                    <option key={color} value={color}>{color}</option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Quantity */}
-          <div>
-            <label className="block text-sm font-medium">Quantity</label>
-            <input
-              type="number"
-              name="quantity"
-              value={form.quantity}
-              onChange={handleChange}
-              className="w-full border p-2 rounded"
-              required
-            />
-          </div>
+              {/* Quantity */}
+              <div>
+                <label className="block font-semibold mb-1">Quantity</label>
+                <input
+                  type="number"
+                  name="quantity"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                  required
+                />
+              </div>
 
-          <div className="col-span-2">
-            <button
-              type="submit"
-              className="w-full bg-green-600 text-white py-2 rounded-lg"
-            >
-              {editIndex !== null ? "Update Entry" : "Submit"}
-            </button>
+              {/* Date */}
+              <div>
+                <label className="block font-semibold mb-1">Date</label>
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                  required
+                />
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700"
+              >
+                {editingId ? "Update" : "Submit"}
+              </button>
+            </form>
           </div>
-        </form>
+        </div>
       )}
 
       {/* Table */}
-      <table className="w-full border-collapse border border-gray-300">
-        <thead className="bg-gray-200">
-          <tr>
-            <th className="border p-2">Client Name</th>
-            <th className="border p-2">Date</th>
-            <th className="border p-2">Product Name</th>
-            <th className="border p-2">Product Size</th>
-            <th className="border p-2">Product Color</th>
-            <th className="border p-2">Quantity</th>
-            <th className="border p-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry, index) => (
-            <tr key={index} className="text-center">
-              <td className="border p-2">{entry.clientName}</td>
-              <td className="border p-2">{entry.date}</td>
-              <td className="border p-2">{entry.productName}</td>
-              <td className="border p-2">{entry.productSize}</td>
-              <td className="border p-2">
-                <div
-                  className="w-6 h-6 mx-auto rounded-full border"
-                  style={{ backgroundColor: entry.productColor }}
-                ></div>
-              </td>
-              <td className="border p-2">{entry.quantity}</td>
-              <td className="border p-2 flex justify-center gap-2">
-                <button
-                  onClick={() => handleEdit(index)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  <Edit size={18} />
-                </button>
-                <button
-                  onClick={() => handleDelete(index)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <Trash size={18} />
-                </button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border border-gray-300">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="px-4 py-2 border">Client Name</th>
+              <th className="px-4 py-2 border">Product Name</th>
+              <th className="px-4 py-2 border">Product Color</th>
+              <th className="px-4 py-2 border">Quantity</th>
+              <th className="px-4 py-2 border">Date</th>
+              <th className="px-4 py-2 border">Actions</th>
             </tr>
-          ))}
-          {entries.length === 0 && (
-            <tr>
-              <td colSpan="7" className="text-center p-4 text-gray-500">
-                No entries yet
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.id} className="text-center">
+                <td className="px-4 py-2 border">{entry.client_name}</td>
+                <td className="px-4 py-2 border">{entry.product_name}</td>
+                <td className="px-4 py-2 border">
+                  <div
+                    className="w-6 h-6 mx-auto rounded-full"
+                    style={{ backgroundColor: colorMap[entry.product_color] || "#000" }}
+                  />
+                </td>
+                <td className="px-4 py-2 border">{entry.quantity}</td>
+                <td className="px-4 py-2 border">{entry.date.split("T")[0]}</td>
+                <td className="px-4 py-2 border flex justify-center gap-2">
+                  <button
+                    onClick={() => handleEdit(entry)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    <Edit2 />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(entry.id)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    <Trash2 />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

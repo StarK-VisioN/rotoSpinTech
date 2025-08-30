@@ -5,6 +5,7 @@ const path = require("path");
 const pool = require("./config/db.js");    
 const GeneralRoutes = require("./routes/GeneralRoutes");
 const authRoutes = require("./routes/authRoutes");
+const entryProductRoutes = require("./routes/entryProductRoutes.js")
 const app = express();
 
 // Middleware 
@@ -23,6 +24,7 @@ app.use(express.json());
 // Routes
 app.use("/", GeneralRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/entry-products", entryProductRoutes);
 
 // DB connection test
 pool.query("SELECT NOW()")
