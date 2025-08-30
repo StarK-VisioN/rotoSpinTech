@@ -30,7 +30,7 @@ function Login() {
                             <div className="mt-2">
                                 <input
                                     id="email"
-                                    type="text"
+                                    type="email"
                                     name="email"
                                     required=""
                                     autoComplete="email"
@@ -84,4 +84,4 @@ function Login() {
     )
 }
 
-export default Login
+export default Login;
