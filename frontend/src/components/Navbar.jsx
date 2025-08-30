@@ -1,17 +1,18 @@
 import React, { useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {assets} from '../assets/assests.js'
+import logo from "../assets/logo.jpg";
 const Navbar = () => {
   const [visible, setVisible] = useState(false);
 
   return (
     <div className="flex items-center justify-between py-5 font-medium">
 
-      <Link to='/'> <img src='' className="w-36" alt="logo_img" /> </Link>
+      <Link to='/'> <img src={logo} className="w-36 rounded-2xl" alt="logo_img" /> </Link>
 
       <ul className="hidden sm:flex gap-5 text-sm text-gray-700">
         <NavLink
-          to="/"
+          to="/admin/home"
           className={({ isActive }) => isActive ? "text-blue-600 font-semibold" : "text-gray-700"}
         >
           Home
@@ -32,10 +33,10 @@ const Navbar = () => {
         </NavLink>
 
         <NavLink
-          to="/stockin"
+          to="/RawMaterial"
           className={({ isActive }) => isActive ? "text-blue-600 font-semibold" : "text-gray-700"}
         >
-          Stock In
+          Raw Material
         </NavLink>
 
         <NavLink
