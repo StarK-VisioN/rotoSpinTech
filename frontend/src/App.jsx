@@ -33,6 +33,7 @@ function App() {
           />
           <Route path="/material" element={<Material />} />
           <Route path="/production" element={<Production />} />
+        <Route path="/admin/active-production" element={<Production />} />
           <Route path="/stockin" element={<Stockin />} />
           <Route path="/stockout" element={<Stockout />} />
           <Route path="/report" element={<Report />} />
