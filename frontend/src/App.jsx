@@ -9,6 +9,7 @@ import Stockout from "./pages/Stockout";
 import Material from "./pages/Material";
 import Report from "./pages/Report";
 import Login from "./pages/Login";
+import EntryProduct from "./adminPage/EntryProduct";
 
 function App() {
   const location = useLocation();
@@ -22,22 +23,29 @@ function App() {
         {!hideNavbarFooter && <Navbar />}
 
         <Routes>
-          <Route path="/" element={<Login />} />
-          <Route
-            path="/home"
-            element={localStorage.getItem("token") ? <Home /> : <Login />}
-          />
-          <Route
-            path="/:role/home"
-            element={localStorage.getItem("token") ? <Home /> : <Login />}
-          />
-          <Route path="/material" element={<Material />} />
-          <Route path="/production" element={<Production />} />
-        <Route path="/admin/active-production" element={<Production />} />
-          <Route path="/stockin" element={<Stockin />} />
-          <Route path="/stockout" element={<Stockout />} />
-          <Route path="/report" element={<Report />} />
-        </Routes>
+  <Route path="/" element={<Login />} />
+  <Route
+    path="/home"
+    element={localStorage.getItem("token") ? <Home /> : <Login />}
+  />
+  <Route
+    path="/:role/home"
+    element={localStorage.getItem("token") ? <Home /> : <Login />}
+  />
+  <Route path="/material" element={<Material />} />
+  <Route path="/production" element={<Production />} />
+  <Route path="/admin/active-production" element={<Production />} />
+  <Route path="/stockin" element={<Stockin />} />
+  <Route path="/stockout" element={<Stockout />} />
+  <Route path="/report" element={<Report />} />
+
+  {/* ✅ New Route */}
+  <Route
+    path="/admin/entry-product"
+    element={localStorage.getItem("token") ? <EntryProduct /> : <Login />}
+  />
+</Routes>
+
 
         {!hideNavbarFooter && <Footer />}
       </div>
