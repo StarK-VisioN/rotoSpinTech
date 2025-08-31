@@ -4,19 +4,18 @@ const pool = require("../config/db");
 // @route POST /api/entry-products
 const createEntryProduct = async (req, res) => {
   try {
-    const { clientName, productName, productColor, quantity, date } = req.body;
+    const { client_name, sap_name, product_color, quantity } = req.body;
 
     // Validate required fields
-    if (!clientName || !productName || !productColor || !quantity || !date) {
+    if (!client_name || !sap_name || !product_color || !quantity) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Insert into DB
     const result = await pool.query(
-      `INSERT INTO entry_products (client_name, product_name, product_color, quantity, date)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO entry_products (client_name, sap_name, product_color, quantity)
+       VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [clientName, productName, productColor, quantity, date]
+      [client_name, sap_name, product_color, quantity]
     );
 
     res.status(201).json(result.rows[0]);
@@ -31,7 +30,11 @@ const createEntryProduct = async (req, res) => {
 const getEntryProducts = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM entry_products ORDER BY created_at DESC"
+      `SELECT e.product_id, e.client_name, e.sap_name, e.product_color, e.quantity, e.created_at,
+              s.part_description, s.unit, s.remarks
+       FROM entry_products e
+       JOIN sap_products s ON e.sap_name = s.sap_name
+       ORDER BY e.created_at DESC`
     );
     res.json(result.rows);
   } catch (err) {
@@ -41,18 +44,18 @@ const getEntryProducts = async (req, res) => {
 };
 
 // @desc Update an entry product
-// @route PUT /api/entry-products/:id
+// @route PUT /api/entry-products/:product_id
 const updateEntryProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { clientName, productName, productColor, quantity, date } = req.body;
+    const { product_id } = req.params;
+    const { client_name, sap_name, product_color, quantity } = req.body;
 
     const result = await pool.query(
       `UPDATE entry_products
-       SET client_name=$1, product_name=$2, product_color=$3, quantity=$4, date=$5
-       WHERE id=$6
+       SET client_name=$1, sap_name=$2, product_color=$3, quantity=$4
+       WHERE product_id=$5
        RETURNING *`,
-      [clientName, productName, productColor, quantity, date, id]
+      [client_name, sap_name, product_color, quantity, product_id]
     );
 
     if (result.rows.length === 0) {
@@ -67,14 +70,14 @@ const updateEntryProduct = async (req, res) => {
 };
 
 // @desc Delete an entry product
-// @route DELETE /api/entry-products/:id
+// @route DELETE /api/entry-products/:product_id
 const deleteEntryProduct = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { product_id } = req.params;
 
     const result = await pool.query(
-      "DELETE FROM entry_products WHERE id=$1 RETURNING *",
-      [id]
+      "DELETE FROM entry_products WHERE product_id=$1 RETURNING *",
+      [product_id]
     );
 
     if (result.rows.length === 0) {

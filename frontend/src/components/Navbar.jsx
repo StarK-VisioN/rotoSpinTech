@@ -16,7 +16,7 @@ const Navbar = () => {
       { label: "Home", path: "/admin/home" },
       { label: "Entry Product", path: "/admin/entry-product" },
       { label: "Entry Raw Stock", path: "/admin/entry-raw-stock" },
-      { label: "Add New Worker", path: "/admin/add-worker" },
+      { label: "Add New Staff", path: "/admin/add-staff" },
       { label: "Active Production Order", path: "/admin/active-production" },
       { label: "Product Management", path: "/admin/product-management" },
       { label: "Dispatch", path: "/admin/dispatch" },

@@ -1,7 +1,8 @@
 import { ToastContainer } from "react-toastify";
 import Navbar from "./components/Navbar";
-import { Route, Routes, useLocation } from "react-router-dom";
 import Footer from "./components/Footer";
+import { Route, Routes, useLocation, Navigate } from "react-router-dom";
+
 import Production from "./pages/Production";
 import Home from "./pages/Home";
 import Stockin from "./pages/Stockin";
@@ -9,43 +10,130 @@ import Stockout from "./pages/Stockout";
 import Material from "./pages/Material";
 import Report from "./pages/Report";
 import Login from "./pages/Login";
+
+// Admin Pages
 import EntryProduct from "./adminPage/EntryProduct";
+import EntryRawStock from "./adminPage/EntryRawStock";
+import AddStaff from "./adminPage/AddStaff"; 
 
 function App() {
   const location = useLocation();
   const hideNavbarFooter = location.pathname === "/";
 
+  const token = localStorage.getItem("token");
+
+  // Protect route wrapper
+  const ProtectedRoute = ({ children }) => {
+    return token ? children : <Navigate to="/" replace />;
+  };
+
   return (
     <>
       <div className="px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
         <ToastContainer />
-
         {!hideNavbarFooter && <Navbar />}
 
         <Routes>
-  <Route path="/" element={<Login />} />
-  <Route
-    path="/home"
-    element={localStorage.getItem("token") ? <Home /> : <Login />}
-  />
-  <Route
-    path="/:role/home"
-    element={localStorage.getItem("token") ? <Home /> : <Login />}
-  />
-  <Route path="/material" element={<Material />} />
-  <Route path="/production" element={<Production />} />
-  <Route path="/admin/active-production" element={<Production />} />
-  <Route path="/stockin" element={<Stockin />} />
-  <Route path="/stockout" element={<Stockout />} />
-  <Route path="/report" element={<Report />} />
+          {/* Public Route */}
+          <Route path="/" element={<Login />} />
 
-  {/* ✅ New Route */}
-  <Route
-    path="/admin/entry-product"
-    element={localStorage.getItem("token") ? <EntryProduct /> : <Login />}
-  />
-</Routes>
+          {/* Home */}
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/:role/home"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* Common Pages */}
+          <Route
+            path="/material"
+            element={
+              <ProtectedRoute>
+                <Material />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/production"
+            element={
+              <ProtectedRoute>
+                <Production />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/active-production"
+            element={
+              <ProtectedRoute>
+                <Production />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stockin"
+            element={
+              <ProtectedRoute>
+                <Stockin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stockout"
+            element={
+              <ProtectedRoute>
+                <Stockout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/report"
+            element={
+              <ProtectedRoute>
+                <Report />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Admin Pages */}
+          <Route
+            path="/admin/entry-product"
+            element={
+              <ProtectedRoute>
+                <EntryProduct />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/entry-raw-stock"
+            element={
+              <ProtectedRoute>
+                <EntryRawStock />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/add-staff"
+            element={
+              <ProtectedRoute>
+                <AddStaff />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch-all: Redirect unknown routes to login */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
 
         {!hideNavbarFooter && <Footer />}
       </div>

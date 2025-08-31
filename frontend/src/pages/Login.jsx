@@ -31,11 +31,10 @@ const Login = () => {
         password,
       });
 
-      const { token, name, position, redirectPath } = res.data;
+      const { token, name, position } = res.data;
 
-      // Save everything to localStorage
       localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(res.data)); 
+      localStorage.setItem("user", JSON.stringify(res.data));
       localStorage.setItem("name", name);
       localStorage.setItem("position", position);
 

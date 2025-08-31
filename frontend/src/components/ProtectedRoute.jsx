@@ -1,7 +1,7 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 
-const ProtectedRoute = ({ children, role }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -9,8 +9,8 @@ const ProtectedRoute = ({ children, role }) => {
     return <Navigate to="/" replace />;
   }
 
-  // Role-based restriction
-  if (role && user.position.toLowerCase() !== role.toLowerCase()) {
+  if (allowedRoles && !allowedRoles.includes(user.position)) {
+    // Redirect to the user's home if not allowed
     return <Navigate to={`/${user.position.toLowerCase()}/home`} replace />;
   }
 

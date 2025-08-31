@@ -1,11 +1,10 @@
-// EntryProduct.jsx
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../../utils/axiosInstance";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Trash2, Edit2, X } from "lucide-react";
-
-const BASE_URL = import.meta.env.VITE_APP_BACKEND_URL;
+import Title from "../components/Title";
+import { API_PATHS } from "../../utils/apiPaths";
 
 const colorMap = {
   yellow: "#FFD700",
@@ -14,100 +13,135 @@ const colorMap = {
   green: "#008000",
 };
 
-const productNames = ["750", "1250", "1500", "1750", "2250", "3000", "2600", "2000"];
-
 const EntryProduct = () => {
-  const [formVisible, setFormVisible] = useState(false);
-  const [clientName, setClientName] = useState("AeroMarine");
-  const [isEditable, setIsEditable] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-
-  const [formData, setFormData] = useState({
-    productName: "",
-    productColor: "",
-    quantity: "",
-    date: "",
-  });
-
   const [entries, setEntries] = useState([]);
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const fetchEntries = async () => {
-    try {
-      const token = JSON.parse(localStorage.getItem("user"))?.token;
-      const res = await axios.get(`${BASE_URL}/api/entry-products`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setEntries(res.data);
-    } catch (err) {
-      console.error("Fetch Entries Error:", err.message);
-    }
-  };
+  const [sapProducts, setSapProducts] = useState([]);
+  const [formVisible, setFormVisible] = useState(false);
+  const [formData, setFormData] = useState({
+    client_name: "AeroMarine",
+    sap_name: "",
+    part_description: "",
+    unit: "",
+    color: "",
+    quantity: "",
+    remarks: "",
+  });
+  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchEntries();
+    fetchSapProducts();
   }, []);
+
+  const fetchEntries = async () => {
+    try {
+      const res = await axiosInstance.get(API_PATHS.ENTRY_PRODUCTS.GET);
+      setEntries(res.data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch entry products!");
+    }
+  };
+
+  const fetchSapProducts = async () => {
+    try {
+      const res = await axiosInstance.get(API_PATHS.SAP_PRODUCTS.GET);
+      setSapProducts(res.data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to fetch SAP products!");
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === "sap_name") {
+      const selected = sapProducts.find((p) => p.sap_name === value);
+      setFormData((prev) => ({
+        ...prev,
+        sap_name: value,
+        part_description: selected ? selected.part_description : "",
+        unit: selected ? selected.unit : "",
+        remarks: selected ? selected.remarks : "",
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const token = JSON.parse(localStorage.getItem("user"))?.token;
+    setLoading(true);
+
     try {
+      const payload = {
+        client_name: formData.client_name,
+        sap_name: formData.sap_name,
+        product_color: formData.color,
+        quantity: Number(formData.quantity),
+      };
+
       if (editingId) {
-        await axios.put(`${BASE_URL}/api/entry-products/${editingId}`, { clientName, ...formData }, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        toast.success("Product entry updated successfully!");
+        await axiosInstance.put(API_PATHS.ENTRY_PRODUCTS.PUT(editingId), payload);
+        toast.success("Entry updated successfully!");
+        setEditingId(null);
       } else {
-        await axios.post(`${BASE_URL}/api/entry-products`, { clientName, ...formData }, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        toast.success("Product entry added successfully!");
+        await axiosInstance.post(API_PATHS.ENTRY_PRODUCTS.POST, payload);
+        toast.success("Entry added successfully!");
       }
-      setFormData({ productName: "", productColor: "", quantity: "", date: "" });
-      setEditingId(null);
+
+      setFormData({
+        client_name: "AeroMarine",
+        sap_name: "",
+        part_description: "",
+        unit: "",
+        color: "",
+        quantity: "",
+        remarks: "",
+      });
       setFormVisible(false);
       fetchEntries();
     } catch (err) {
-      console.error("Submit Error:", err.message);
+      console.error(err);
       toast.error("Error submitting entry!");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEdit = (entry) => {
     setFormVisible(true);
-    setEditingId(entry.id);
-    setClientName(entry.client_name);
     setFormData({
-      productName: entry.product_name,
-      productColor: entry.product_color,
+      client_name: entry.client_name || "AeroMarine",
+      sap_name: entry.sap_name,
+      part_description: entry.part_description || "",
+      unit: entry.unit || "",
+      color: entry.product_color || "",
       quantity: entry.quantity,
-      date: entry.date.split("T")[0],
+      remarks: entry.remarks || "",
     });
+    setEditingId(entry.product_id);
     toast.info("Editing mode enabled");
   };
 
   const handleDelete = (id) => {
     const confirmToast = ({ closeToast }) => (
       <div>
-        <p>Are you sure you want to delete this entry?</p>
+        <p>Are you sure you want to delete this product?</p>
         <div className="flex justify-end mt-2 gap-2">
           <button
             className="bg-red-600 text-white px-2 py-1 rounded"
             onClick={async () => {
               try {
-                const token = JSON.parse(localStorage.getItem("user"))?.token;
-                await axios.delete(`${BASE_URL}/api/entry-products/${id}`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                });
+                await axiosInstance.delete(API_PATHS.ENTRY_PRODUCTS.DELETE(id));
                 fetchEntries();
                 toast.dismiss();
-                toast.success("Entry deleted successfully!");
+                toast.success("Product deleted successfully!");
               } catch (err) {
                 console.error(err);
-                toast.error("Error deleting entry!");
+                toast.error("Error deleting product!");
               }
             }}
           >
@@ -122,93 +156,131 @@ const EntryProduct = () => {
         </div>
       </div>
     );
-
     toast.info(confirmToast, { autoClose: false });
   };
 
   return (
-    <div className="mt-10">
-      <ToastContainer />
+    <div className="p-4">
+      <div className="text-2xl text-center pt-8 border-t">
+        <Title text1="PRODUCT" text2="ENTRY" />
+      </div>
 
-      {/* Top-right New Entry Product Button */}
-      <div className="flex justify-end mb-4">
+      <ToastContainer position="top-right" autoClose={2000} />
+
+      <div className="flex justify-end my-4">
         <button
           onClick={() => setFormVisible(true)}
           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
-          New Entry Product
+          {editingId ? "Edit Product" : "Add Product"}
         </button>
       </div>
 
-      {/* Form Modal */}
       {formVisible && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-start pt-20 z-50">
           <div className="bg-white p-6 rounded-2xl w-full max-w-lg relative shadow-lg">
-            {/* Close Icon */}
             <X
               size={28}
               className="absolute top-3 right-3 text-red-600 cursor-pointer hover:text-red-800"
               onClick={() => {
                 setFormVisible(false);
                 setEditingId(null);
-                setFormData({ productName: "", productColor: "", quantity: "", date: "" });
+                setFormData({
+                  client_name: "AeroMarine",
+                  sap_name: "",
+                  part_description: "",
+                  unit: "",
+                  color: "",
+                  quantity: "",
+                  remarks: "",
+                });
               }}
             />
+            <h2 className="text-2xl font-bold mb-6 text-center">
+              {editingId ? "Edit Product Entry" : "New Product Entry"}
+            </h2>
 
-            <h2 className="text-2xl font-bold mb-6 text-center">{editingId ? "Edit Entry Product" : "New Entry Product"}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-
+            <form onSubmit={handleSubmit} className="space-y-1">
               {/* Client Name */}
               <div>
                 <label className="block font-semibold mb-1">Client Name</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    disabled={!isEditable}
-                    className="border p-2 rounded w-full"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsEditable(!isEditable)}
-                    className="px-3 py-2 bg-blue-500 text-white rounded"
-                  >
-                    {isEditable ? "Lock" : "Edit"}
-                  </button>
-                </div>
+                <input
+                  type="text"
+                  name="client_name"
+                  value={formData.client_name}
+                  onChange={handleChange}
+                  className="border p-1 rounded w-full"
+                />
               </div>
 
-              {/* Product Name */}
+              {/* SAP Name */}
               <div>
-                <label className="block font-semibold mb-1">Product Name</label>
+                <label className="block font-semibold mb-1">SAP Name</label>
                 <select
-                  name="productName"
-                  value={formData.productName}
+                  name="sap_name"
+                  value={formData.sap_name}
                   onChange={handleChange}
-                  className="border p-2 rounded w-full"
+                  className="border p-1 rounded w-full"
                   required
                 >
-                  <option value="">Select Product Name</option>
-                  {productNames.map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                  <option value="">Select SAP Name</option>
+                  {sapProducts.map((p) => (
+                    <option key={p.sap_name} value={p.sap_name}>
+                      {p.sap_name}
+                    </option>
                   ))}
                 </select>
               </div>
 
-              {/* Product Color */}
+              {/* Auto-filled fields */}
               <div>
-                <label className="block font-semibold mb-1">Product Color</label>
+                <label className="block font-semibold mb-1">Part Description</label>
+                <input
+                  type="text"
+                  name="part_description"
+                  value={formData.part_description}
+                  readOnly
+                  className="border p-1 rounded w-full bg-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Unit</label>
+                <input
+                  type="text"
+                  name="unit"
+                  value={formData.unit}
+                  readOnly
+                  className="border p-1 rounded w-full bg-gray-100"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold mb-1">Remarks</label>
+                <textarea
+                  name="remarks"
+                  value={formData.remarks}
+                  readOnly
+                  rows={2}
+                  className="border p-1 rounded w-full bg-gray-100"
+                />
+              </div>
+
+              {/* Color */}
+              <div>
+                <label className="block font-semibold mb-1">Color</label>
                 <select
-                  name="productColor"
-                  value={formData.productColor}
+                  name="color"
+                  value={formData.color}
                   onChange={handleChange}
-                  className="border p-2 rounded w-full"
+                  className="border p-1 rounded w-full"
                   required
                 >
                   <option value="">Select Color</option>
-                  {Object.keys(colorMap).map((color) => (
-                    <option key={color} value={color}>{color}</option>
+                  {Object.keys(colorMap).map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -221,27 +293,14 @@ const EntryProduct = () => {
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleChange}
-                  className="border p-2 rounded w-full"
+                  className="border p-1 rounded w-full"
                   required
                 />
               </div>
 
-              {/* Date */}
-              <div>
-                <label className="block font-semibold mb-1">Date</label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                  required
-                />
-              </div>
-
-              {/* Submit */}
               <button
                 type="submit"
+                disabled={loading}
                 className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700"
               >
                 {editingId ? "Update" : "Submit"}
@@ -252,47 +311,67 @@ const EntryProduct = () => {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto mt-6">
         <table className="min-w-full border border-gray-300">
           <thead>
-            <tr className="bg-gray-100">
+            <tr className="bg-gray-100 text-center">
               <th className="px-4 py-2 border">Client Name</th>
-              <th className="px-4 py-2 border">Product Name</th>
-              <th className="px-4 py-2 border">Product Color</th>
+              <th className="px-4 py-2 border">SAP Name</th>
+              <th className="px-4 py-2 border">Part Description</th>
+              <th className="px-4 py-2 border">Unit</th>
+              <th className="px-4 py-2 border">Remarks</th>
+              <th className="px-4 py-2 border">Color</th>
               <th className="px-4 py-2 border">Quantity</th>
               <th className="px-4 py-2 border">Date</th>
               <th className="px-4 py-2 border">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {entries.map((entry) => (
-              <tr key={entry.id} className="text-center">
-                <td className="px-4 py-2 border">{entry.client_name}</td>
-                <td className="px-4 py-2 border">{entry.product_name}</td>
-                <td className="px-4 py-2 border">
-                  <div
-                    className="w-6 h-6 mx-auto rounded-full"
-                    style={{ backgroundColor: colorMap[entry.product_color] || "#000" }}
-                  />
-                </td>
-                <td className="px-4 py-2 border">{entry.quantity}</td>
-                <td className="px-4 py-2 border">{entry.date.split("T")[0]}</td>
-                <td className="px-4 py-2 border flex justify-center gap-2">
-                  <button
-                    onClick={() => handleEdit(entry)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    <Edit2 />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(entry.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 />
-                  </button>
+            {entries.length ? (
+              entries.map((entry) => (
+                <tr key={entry.product_id} className="text-center">
+                  <td className="px-4 py-2 border">
+                    {entry.client_name || "AeroMarine"}
+                  </td>
+                  <td className="px-4 py-2 border">{entry.sap_name}</td>
+                  <td className="px-4 py-2 border">{entry.part_description}</td>
+                  <td className="px-4 py-2 border">{entry.unit}</td>
+                  <td className="px-4 py-2 border">{entry.remarks}</td>
+                  <td className="px-4 py-2 border">
+                    {entry.product_color ? (
+                      <div className="w-6 h-6 rounded-full mx-auto border"
+                        style={{ backgroundColor: colorMap[entry.product_color] }}></div>
+                      ) : (
+                          "-"
+                          )}
+                  </td>
+                  <td className="px-4 py-2 border">{entry.quantity}</td>
+                  <td className="px-4 py-2 border">
+                    {entry.created_at ? entry.created_at.split("T")[0] : "-"}
+                  </td>
+                  <td className="px-4 py-2 border flex justify-center gap-2">
+                    <button
+                      onClick={() => handleEdit(entry)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <Edit2 />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(entry.product_id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <Trash2 />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="9" className="text-center p-4">
+                  No product entries found.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

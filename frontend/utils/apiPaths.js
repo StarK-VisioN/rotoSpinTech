@@ -6,5 +6,19 @@ export const API_PATHS = {
     LOGIN: "/api/auth/login",
     GET_PROFILE: "/api/auth/profile",
   },
-
+  STAFF: {
+    GET: "/api/staff",
+    POST: "/api/staff",
+    PUT: (id) => `/api/staff/${id}`,
+    DELETE: (id) => `/api/staff/${id}`,
+  },
+  ENTRY_PRODUCTS: {
+    GET: "/api/entry-products",
+    POST: "/api/entry-products",
+    PUT: (id) => `/api/entry-products/${id}`,
+    DELETE: (id) => `/api/entry-products/${id}`,
+  },
+  SAP_PRODUCTS: {
+    GET: "/api/sap-products",
+  },
 };

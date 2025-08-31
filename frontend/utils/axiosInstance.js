@@ -10,7 +10,6 @@ const axiosInstance = axios.create({
   },
 });
 
-// add token if present
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
