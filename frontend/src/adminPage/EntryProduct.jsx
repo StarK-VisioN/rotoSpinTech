@@ -9,8 +9,10 @@ import { API_PATHS } from "../../utils/apiPaths";
 const colorMap = {
   yellow: "#FFD700",
   black: "#000000",
+  blue: "#0000FF",
   red: "#FF0000",
   green: "#008000",
+  white: "#D6D6D6",
 };
 
 const EntryProduct = () => {
@@ -28,6 +30,7 @@ const EntryProduct = () => {
   });
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [clientNameEditable, setClientNameEditable] = useState(false);
 
   useEffect(() => {
     fetchEntries();
@@ -65,6 +68,7 @@ const EntryProduct = () => {
         part_description: selected ? selected.part_description : "",
         unit: selected ? selected.unit : "",
         remarks: selected ? selected.remarks : "",
+        color: selected ? selected.color : "",
       }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -101,6 +105,7 @@ const EntryProduct = () => {
         quantity: "",
         remarks: "",
       });
+      setClientNameEditable(false);
       setFormVisible(false);
       fetchEntries();
     } catch (err) {
@@ -185,6 +190,7 @@ const EntryProduct = () => {
               onClick={() => {
                 setFormVisible(false);
                 setEditingId(null);
+                setClientNameEditable(false);
                 setFormData({
                   client_name: "AeroMarine",
                   sap_name: "",
@@ -201,16 +207,26 @@ const EntryProduct = () => {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-1">
-              {/* Client Name */}
-              <div>
-                <label className="block font-semibold mb-1">Client Name</label>
-                <input
-                  type="text"
-                  name="client_name"
-                  value={formData.client_name}
-                  onChange={handleChange}
-                  className="border p-1 rounded w-full"
-                />
+              {/* Client Name with Edit button */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <label className="block font-semibold mb-1">Client Name</label>
+                  <input
+                    type="text"
+                    name="client_name"
+                    value={formData.client_name}
+                    onChange={handleChange}
+                    className={`border p-1 rounded w-full ${!clientNameEditable ? "bg-gray-100" : ""}`}
+                    readOnly={!clientNameEditable}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setClientNameEditable((prev) => !prev)}
+                  className="text-blue-600 hover:text-blue-800 mt-6"
+                >
+                  {clientNameEditable ? "Lock" : "Edit"}
+                </button>
               </div>
 
               {/* SAP Name */}
@@ -269,20 +285,13 @@ const EntryProduct = () => {
               {/* Color */}
               <div>
                 <label className="block font-semibold mb-1">Color</label>
-                <select
+                <input
+                  type="text"
                   name="color"
                   value={formData.color}
-                  onChange={handleChange}
-                  className="border p-1 rounded w-full"
-                  required
-                >
-                  <option value="">Select Color</option>
-                  {Object.keys(colorMap).map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  readOnly
+                  className="border p-1 rounded w-full bg-gray-100"
+                />
               </div>
 
               {/* Quantity */}
@@ -330,44 +339,69 @@ const EntryProduct = () => {
             {entries.length ? (
               entries.map((entry) => (
                 <tr key={entry.product_id} className="text-center">
-                  <td className="px-4 py-2 border">
-                    {entry.client_name || "AeroMarine"}
-                  </td>
+                  <td className="px-4 py-2 border">{entry.client_name || "AeroMarine"}</td>
                   <td className="px-4 py-2 border">{entry.sap_name}</td>
                   <td className="px-4 py-2 border">{entry.part_description}</td>
                   <td className="px-4 py-2 border">{entry.unit}</td>
                   <td className="px-4 py-2 border">{entry.remarks}</td>
+
+                  {/* Color column - now with proper border */}
                   <td className="px-4 py-2 border">
-                    {entry.product_color ? (
-                      <div className="w-6 h-6 rounded-full mx-auto border"
-                        style={{ backgroundColor: colorMap[entry.product_color] }}></div>
+                    <div className="flex justify-center gap-1">
+                      {entry.sap_name ? (
+                        (() => {
+                          const color = sapProducts.find(p => p.sap_name === entry.sap_name)?.color || "";
+                          return color ? (
+                            color.split("/").map((c, idx) => (
+                              <div
+                                key={idx}
+                                className="w-6 h-6 rounded-full border border-gray-300"
+                                style={{ backgroundColor: colorMap[c.toLowerCase()] || "#ccc" }}
+                              ></div>
+                            ))
+                          ) : (
+                            <div
+                              className="w-6 h-6 rounded-full border border-gray-100"
+                              style={{ backgroundColor: "#FCFCFC" }}
+                            ></div>
+                          );
+                        })()
                       ) : (
-                          "-"
-                          )}
+                        <div
+                          className="w-6 h-6 rounded-full border border-gray-100"
+                          style={{ backgroundColor: "#FCFCFC" }}
+                        ></div>
+                      )}
+                    </div>
                   </td>
+
                   <td className="px-4 py-2 border">{entry.quantity}</td>
-                  <td className="px-4 py-2 border">
+                  <td className="px-4 py-2 border whitespace-nowrap">
                     {entry.created_at ? entry.created_at.split("T")[0] : "-"}
                   </td>
-                  <td className="px-4 py-2 border flex justify-center gap-2">
-                    <button
-                      onClick={() => handleEdit(entry)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      <Edit2 />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(entry.product_id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 />
-                    </button>
+
+                  {/* Actions column - now with proper border */}
+                  <td className="px-4 py-2 border">
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => handleEdit(entry)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Edit2 />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(entry.product_id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="9" className="text-center p-4">
+                <td colSpan="9" className="text-center p-4 border">
                   No product entries found.
                 </td>
               </tr>
