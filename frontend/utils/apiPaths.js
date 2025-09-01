@@ -21,4 +21,10 @@ export const API_PATHS = {
   SAP_PRODUCTS: {
     GET: "/api/sap-products",
   },
+  PREDICTION: {
+    SALES: '/api/prediction/sales',
+    INVENTORY: '/api/prediction/inventory',
+    MATERIALS: '/api/prediction/materials',
+    FORECAST: '/api/prediction/forecast',
+  },
 };

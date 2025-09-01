@@ -15,6 +15,7 @@ import Login from "./pages/Login";
 import EntryProduct from "./adminPage/EntryProduct";
 import EntryRawStock from "./adminPage/EntryRawStock";
 import AddStaff from "./adminPage/AddStaff"; 
+import Prediction from "./adminPage/Prediction";
 
 function App() {
   const location = useLocation();
@@ -127,6 +128,24 @@ function App() {
             element={
               <ProtectedRoute>
                 <AddStaff />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/prediction"
+            element={
+              <ProtectedRoute>
+                <Prediction />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Manager Pages */}
+          <Route
+            path="/manager/prediction"
+            element={
+              <ProtectedRoute>
+                <Prediction />
               </ProtectedRoute>
             }
           />
