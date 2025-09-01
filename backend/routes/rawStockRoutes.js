@@ -4,6 +4,7 @@ const {
   getRawStocks,
   updateRawStock,
   deleteRawStock,
+  deleteColorFromRawStock,
 } = require("../controllers/rawStockController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -20,5 +21,8 @@ router.put("/:id", protect, updateRawStock);
 
 // Delete raw stock entry
 router.delete("/:id", protect, deleteRawStock);
+
+// New route for deleting specific color detail
+router.delete("/:orderId/color/:detailId", deleteColorFromRawStock);
 
 module.exports = router;

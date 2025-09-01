@@ -9,6 +9,7 @@ const entryProductRoutes = require("./routes/entryProductRoutes");
 const rawStockRoutes = require("./routes/rawStockRoutes");
 const staffRoutes = require("./routes/staffRoutes");
 const sapProductsRoutes = require("./routes/sapProductsRoutes");
+const colorsRoutes  = require("./routes/colorsRoutes");
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/entry-products", entryProductRoutes);
 app.use("/api/raw-stock", rawStockRoutes);
 app.use("/api/staff", staffRoutes); 
 app.use("/api/sap-products", sapProductsRoutes);
+app.use("/api/colors", colorsRoutes);
 
 // DB test
 pool.query("SELECT NOW()")
