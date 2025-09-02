@@ -1,3 +1,5 @@
+// need to change this page after completing all other pages and making it dyanamic.
+
 import React, { useState } from 'react';
 import { Package, Users, Plus,ClipboardCheck , ShoppingCart, TrendingUp, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 

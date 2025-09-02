@@ -9,16 +9,16 @@ const { protect } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// Add new entry product
+// for adding new entry product
 router.post("/", protect, createEntryProduct);
 
-// Get all entry products
+// to get all entry products
 router.get("/", protect, getEntryProducts);
 
-// Update an entry product
+// to update an entry product
 router.put("/:product_id", protect, updateEntryProduct);
 
-// Delete an entry product
+// for delete an entry product
 router.delete("/:product_id", protect, deleteEntryProduct);
 
 module.exports = router;

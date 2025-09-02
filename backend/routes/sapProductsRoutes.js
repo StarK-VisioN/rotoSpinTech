@@ -4,7 +4,7 @@ const { protect } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// Get all SAP products
+// to get all SAP products
 router.get("/", protect, getSapProducts);
 
 module.exports = router;

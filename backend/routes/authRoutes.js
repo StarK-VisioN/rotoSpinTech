@@ -4,13 +4,13 @@ const { protect } = require("../middleware/authMiddleware.js");
 
 const router = express.Router();
 
-// Register user
+// register user
 router.post("/signup", signupUser);
 
-// Login user
+// login user
 router.post("/login", loginUser);
 
-// Get user profile (protected)
+// get user profile (protected)
 router.get("/profile", protect, getUserProfile);
 
 module.exports = router;

@@ -10,7 +10,7 @@ const createRawStock = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Calculate total KG and total amount
+    // calculate total KG and total amount (price)
     let total_kgs = 0;
     let total_amount = 0;
     colors.forEach(c => {
@@ -18,7 +18,7 @@ const createRawStock = async (req, res) => {
       total_amount += parseFloat(c.kgs) * parseFloat(c.rate_per_kg);
     });
 
-    // Insert main stock entry
+    // insert main stock entry
     const stockResult = await pool.query(
       `INSERT INTO entry_raw_stock (material_grade, total_kgs, total_amount, invoice_number, invoice_date)
        VALUES ($1, $2, $3, $4, $5) RETURNING order_id`,
@@ -27,7 +27,7 @@ const createRawStock = async (req, res) => {
 
     const order_id = stockResult.rows[0].order_id;
 
-    // Insert details per color
+    // insert details per color
     for (const c of colors) {
       await pool.query(
         `INSERT INTO entry_raw_stock_details (order_id, color_id, kgs, rate_per_kg)
@@ -97,10 +97,10 @@ const updateRawStock = async (req, res) => {
       [material_grade, total_kgs, total_amount, invoice_number, invoice_date, id]
     );
 
-    // Remove previous details
+    // remove previous details
     await pool.query(`DELETE FROM entry_raw_stock_details WHERE order_id=$1`, [id]);
 
-    // Insert updated details
+    // insert updated details
     for (const c of colors) {
       await pool.query(
         `INSERT INTO entry_raw_stock_details (order_id, color_id, kgs, rate_per_kg)

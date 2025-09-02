@@ -6,13 +6,13 @@ const protect = async (req, res, next) => {
     let token = req.headers.authorization;
 
     if (token && token.startsWith("Bearer ")) {
-      // Extract token
+      // extract token
       token = token.split(" ")[1];
 
-      // Verify token
+      // verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Fetch user from DB
+      // fetch user from DB
       const result = await pool.query(
         "SELECT id, name, position, working_id FROM users WHERE id = $1",
         [decoded.id]
@@ -24,7 +24,7 @@ const protect = async (req, res, next) => {
         return res.status(401).json({ message: "User not found" });
       }
 
-      // Attach user to request
+      // attach user to request
       req.user = { ...user, role: decoded.role };
       next();
     } else {

@@ -13,7 +13,7 @@ const colorsRoutes  = require("./routes/colorsRoutes");
 
 const app = express();
 
-// Middleware
+// middleware
 app.use(
   cors({
     origin: "*",
@@ -25,7 +25,7 @@ app.use(
 
 app.use(express.json());
 
-// Routes
+// routes
 app.use("/", GeneralRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/entry-products", entryProductRoutes);

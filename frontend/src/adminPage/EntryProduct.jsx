@@ -16,9 +16,11 @@ const colorMap = {
 };
 
 const EntryProduct = () => {
+  // useStates
   const [entries, setEntries] = useState([]);
   const [sapProducts, setSapProducts] = useState([]);
   const [formVisible, setFormVisible] = useState(false);
+
   const [formData, setFormData] = useState({
     client_name: "AeroMarine",
     sap_name: "",
@@ -28,6 +30,7 @@ const EntryProduct = () => {
     quantity: "",
     remarks: "",
   });
+
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [clientNameEditable, setClientNameEditable] = useState(false);
@@ -136,8 +139,7 @@ const EntryProduct = () => {
       <div>
         <p>Are you sure you want to delete this product?</p>
         <div className="flex justify-end mt-2 gap-2">
-          <button
-            className="bg-red-600 text-white px-2 py-1 rounded"
+          <button className="bg-red-600 text-white px-2 py-1 rounded"
             onClick={async () => {
               try {
                 await axiosInstance.delete(API_PATHS.ENTRY_PRODUCTS.DELETE(id));
@@ -152,10 +154,7 @@ const EntryProduct = () => {
           >
             Yes
           </button>
-          <button
-            className="bg-gray-300 px-2 py-1 rounded"
-            onClick={() => toast.dismiss()}
-          >
+          <button className="bg-gray-300 px-2 py-1 rounded" onClick={() => toast.dismiss()}>
             No
           </button>
         </div>
@@ -170,12 +169,11 @@ const EntryProduct = () => {
         <Title text1="PRODUCT" text2="ENTRY" />
       </div>
 
-      <ToastContainer position="top-right" autoClose={2000} />
+      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className="flex justify-end my-4">
-        <button
+        <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           onClick={() => setFormVisible(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
         >
           {editingId ? "Edit Product" : "Add Product"}
         </button>
@@ -220,10 +218,9 @@ const EntryProduct = () => {
                     readOnly={!clientNameEditable}
                   />
                 </div>
-                <button
+                <button className="text-blue-600 hover:text-blue-800 mt-6"
                   type="button"
                   onClick={() => setClientNameEditable((prev) => !prev)}
-                  className="text-blue-600 hover:text-blue-800 mt-6"
                 >
                   {clientNameEditable ? "Lock" : "Edit"}
                 </button>

@@ -6,15 +6,13 @@ const createEntryProduct = async (req, res) => {
   try {
     const { client_name, sap_name, quantity } = req.body;
 
-    // Validate required fields
+    // validate required fields
     if (!client_name || !sap_name || !quantity) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     const result = await pool.query(
-      `INSERT INTO entry_products (client_name, sap_name, quantity)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
+      `INSERT INTO entry_products (client_name, sap_name, quantity) VALUES ($1, $2, $3) RETURNING *`,
       [client_name, sap_name, quantity]
     );
 

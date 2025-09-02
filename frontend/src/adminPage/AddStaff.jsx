@@ -7,6 +7,8 @@ import { Trash2, Edit2, X } from "lucide-react";
 import Title from "../components/Title";
 
 const AddStaff = () => {
+
+  // useStates
   const [staffList, setStaffList] = useState([]);
   const [formData, setFormData] = useState({
     position: "PM",
@@ -18,6 +20,7 @@ const AddStaff = () => {
   const [formVisible, setFormVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // function to fetch Staff
   const fetchStaff = async () => {
     try {
       const res = await axiosInstance.get(API_PATHS.STAFF.GET);
@@ -32,10 +35,12 @@ const AddStaff = () => {
     fetchStaff();
   }, []);
 
+  // function to handle the changes in position, name, working_ID, and password
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  // handling form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -59,6 +64,7 @@ const AddStaff = () => {
     }
   };
 
+  // function to handle edit buttton on the page
   const handleEdit = (staff) => {
     setFormVisible(true);
     setFormData({
@@ -71,13 +77,13 @@ const AddStaff = () => {
     toast.info("Editing mode enabled");
   };
 
+  // function to handle delete button on the page
   const handleDelete = (id) => {
     const confirmToast = ({ closeToast }) => (
       <div>
         <p>Are you sure you want to delete this staff?</p>
         <div className="flex justify-end mt-2 gap-2">
-          <button
-            className="bg-red-600 text-white px-2 py-1 rounded"
+          <button className="bg-red-600 text-white px-2 py-1 rounded"
             onClick={async () => {
               try {
                 await axiosInstance.delete(API_PATHS.STAFF.DELETE(id));
@@ -92,10 +98,7 @@ const AddStaff = () => {
           >
             Yes
           </button>
-          <button
-            className="bg-gray-300 px-2 py-1 rounded"
-            onClick={() => toast.dismiss()}
-          >
+          <button className="bg-gray-300 px-2 py-1 rounded" onClick={() => toast.dismiss()} >
             No
           </button>
         </div>
@@ -116,10 +119,7 @@ const AddStaff = () => {
 
       {/* Add Staff Button */}
       <div className="flex justify-end my-4">
-        <button
-          onClick={() => setFormVisible(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
+        <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onClick={() => setFormVisible(true)}>
           {editingId ? "Edit Staff" : "New Staff"}
         </button>
       </div>
@@ -226,15 +226,13 @@ const AddStaff = () => {
                   <td className="px-4 py-2 border">{staff.working_id}</td>
                   <td className="px-4 py-2 border">{staff.original_password}</td>
                   <td className="px-4 py-2 border flex justify-center gap-2">
-                    <button
+                    <button className="text-blue-600 hover:text-blue-800"
                       onClick={() => handleEdit(staff)}
-                      className="text-blue-600 hover:text-blue-800"
                     >
                       <Edit2 />
                     </button>
-                    <button
+                    <button className="text-red-600 hover:text-red-800"
                       onClick={() => handleDelete(staff.staff_id)}
-                      className="text-red-600 hover:text-red-800"
                     >
                       <Trash2 />
                     </button>

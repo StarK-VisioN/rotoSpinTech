@@ -22,9 +22,9 @@ const EntryRawStock = () => {
 
   const [formData, setFormData] = useState({
     material_grade: "",
-    colors: [], // array of { color_id, color_name }
-    kgPerColor: {}, // { [color_id]: string (empty or numeric string) }
-    ratePerKg: {}, // { [color_id]: string }
+    colors: [],                   // array of { color_id, color_name }
+    kgPerColor: {},               // { [color_id]: string (empty or numeric string) }
+    ratePerKg: {},                // { [color_id]: string }
     invoice_number: "",
     invoice_date: "",
   });
@@ -33,13 +33,13 @@ const EntryRawStock = () => {
   const [materialOptions] = useState(["Octen-123", "Flexitub-789", "Other-001"]);
   const [colorOptions, setColorOptions] = useState([]);
 
-  // Format numbers with Indian commas. Returns empty string for blank inputs.
+  // formating numbers with Indian commas & returns empty string for blank inputs.
   const formatNumber = (num) => {
     if (num === "" || num === null || num === undefined || Number.isNaN(Number(num))) return "";
     return new Intl.NumberFormat("en-IN").format(Number(num));
   };
 
-  // Fetch available colors from backend
+  // fetching available colors from backend
   const fetchColors = async () => {
     try {
       const token = getToken();
@@ -52,7 +52,7 @@ const EntryRawStock = () => {
     }
   };
 
-  // Fetch existing entries
+  // fetch existing entries
   const fetchEntries = async () => {
     try {
       const token = getToken();

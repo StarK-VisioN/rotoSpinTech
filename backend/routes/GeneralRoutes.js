@@ -14,7 +14,7 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Check if user already exists
+    // check if user already exists
     const existingUser = await findUserByWorkingId(workingId);
     if (existingUser) {
       return res
