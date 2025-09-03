@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Trash2, Edit2, X, LoaderCircle } from "lucide-react";
+import { Trash2, Edit2, X, LoaderCircle, Plus, Settings } from "lucide-react";
 import Title from "../components/Title";
 
 const BASE_URL = import.meta.env.VITE_APP_BACKEND_URL;
@@ -18,19 +18,23 @@ const getToken = () => {
 
 const EntryRawStock = () => {
   const [formVisible, setFormVisible] = useState(false);
+  const [colorManagerVisible, setColorManagerVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [loadingColors, setLoadingColors] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showCustomColorInput, setShowCustomColorInput] = useState(false);
+  const [customColorName, setCustomColorName] = useState("");
 
   const [formData, setFormData] = useState({
     material_grade: "",
-    colors: [],                   // array of { color_id, color_name }
+    colors: [],                   // array of { color_id, color_name, is_custom? }
     kgPerColor: {},               // { [color_id]: string (empty or numeric string) }
     ratePerKg: {},                // { [color_id]: string }
     invoice_number: "",
     invoice_date: "",
+    remarks: "",                  // Added remarks field
   });
 
   const [entries, setEntries] = useState([]);
@@ -87,17 +91,60 @@ const EntryRawStock = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Add a custom color
+  const handleAddCustomColor = () => {
+    if (!customColorName.trim()) {
+      toast.error("Please enter a color name");
+      return;
+    }
+    
+    // Check if color already exists (case insensitive)
+    const normalizedCustomName = customColorName.trim().toLowerCase();
+    const exists = formData.colors.some(c => 
+      c.color_name.toLowerCase() === normalizedCustomName
+    );
+    
+    if (exists) {
+      toast.error("This color has already been added");
+      return;
+    }
+    
+    // Create a temporary ID for the custom color (will be replaced with real ID on submit)
+    const tempId = `custom-${Date.now()}`;
+    
+    setFormData((prev) => ({
+      ...prev,
+      colors: [...prev.colors, { 
+        color_id: tempId, 
+        color_name: customColorName.trim(),
+        is_custom: true 
+      }],
+      kgPerColor: { ...prev.kgPerColor, [tempId]: "" },
+      ratePerKg: { ...prev.ratePerKg, [tempId]: "" },
+    }));
+    
+    setCustomColorName("");
+    setShowCustomColorInput(false);
+  };
+
   // Add a selected color to the form (preserves insertion order)
   const handleAddColor = (e) => {
     const colorId = e.target.value;
     if (!colorId) return;
     const colorObj = colorOptions.find((c) => String(c.color_id) === String(colorId));
     if (!colorObj) return;
-    if (formData.colors.some((c) => String(c.color_id) === String(colorObj.color_id))) return;
+    if (formData.colors.some((c) => String(c.color_id) === String(colorObj.color_id))) {
+      toast.error("This color has already been added");
+      return;
+    }
 
     setFormData((prev) => ({
       ...prev,
-      colors: [...prev.colors, { color_id: colorObj.color_id, color_name: colorObj.color_name }],
+      colors: [...prev.colors, { 
+        color_id: colorObj.color_id, 
+        color_name: colorObj.color_name,
+        is_custom: false 
+      }],
       // initialize as empty strings so the inputs are empty (no default 0)
       kgPerColor: { ...prev.kgPerColor, [colorObj.color_id]: "" },
       ratePerKg: { ...prev.ratePerKg, [colorObj.color_id]: "" },
@@ -114,6 +161,87 @@ const EntryRawStock = () => {
       delete newRate[color_id];
       return { ...prev, colors: newColors, kgPerColor: newKg, ratePerKg: newRate };
     });
+  };
+
+  // Remove a custom color from the database (only for saved custom colors)
+  const handleRemoveCustomColor = async (color_id, color_name) => {
+    try {
+      // Check if this is a saved custom color (not a temporary one)
+      if (color_id.toString().startsWith('custom-')) {
+        // This is a temporary color that hasn't been saved yet
+        handleRemoveColor(color_id);
+        return;
+      }
+      
+      const token = getToken();
+      const response = await axios.delete(`${BASE_URL}/api/colors/${color_id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      
+      if (response.status === 200) {
+        toast.success(`Color "${color_name}" deleted successfully`);
+        // Remove from form
+        handleRemoveColor(color_id);
+        // Refresh color options
+        fetchColors();
+      }
+    } catch (err) {
+      console.error("Delete Custom Color Error:", err.message);
+      if (err.response?.status === 404) {
+        toast.error("Color not found or already deleted");
+      } else if (err.response?.status === 400) {
+        toast.error(err.response.data.message);
+      } else {
+        toast.error("Error deleting custom color!");
+      }
+    }
+  };
+
+  // Delete a custom color from the color options list
+  const handleDeleteColorOption = async (color_id, color_name) => {
+    const confirmToast = ({ closeToast }) => (
+      <div>
+        <p>Are you sure you want to delete the color "{color_name}"?</p>
+        <div className="flex justify-end mt-2 gap-2">
+          <button
+            className="bg-red-600 text-white px-2 py-1 rounded"
+            onClick={async () => {
+              try {
+                const token = getToken();
+                const response = await axios.delete(`${BASE_URL}/api/colors/${color_id}`, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                });
+                
+                if (response.status === 200) {
+                  toast.dismiss();
+                  toast.success(`Color "${color_name}" deleted successfully`);
+                  fetchColors();
+                }
+              } catch (err) {
+                console.error("Delete Color Option Error:", err.message);
+                toast.dismiss();
+                if (err.response?.status === 404) {
+                  toast.error("Color not found or already deleted");
+                } else if (err.response?.status === 400) {
+                  toast.error(err.response.data.message);
+                } else {
+                  toast.error("Error deleting color!");
+                }
+              }
+            }}
+          >
+            Yes
+          </button>
+          <button
+            className="bg-gray-300 px-2 py-1 rounded"
+            onClick={() => toast.dismiss()}
+          >
+            No
+          </button>
+        </div>
+      </div>
+    );
+    toast.info(confirmToast, { autoClose: false });
   };
 
   const handleKgChange = (color_id, value) => {
@@ -172,12 +300,15 @@ const EntryRawStock = () => {
     const payload = {
       material_grade: formData.material_grade,
       colors: formData.colors.map((c) => ({
-        color_id: c.color_id,
+        color_id: c.is_custom ? null : c.color_id, // For custom colors, send null
+        color_name: c.color_name, // For custom colors, send the name
+        is_custom: c.is_custom, // Indicate if this is a custom color
         kgs: parseFloat(formData.kgPerColor[c.color_id]) || 0,
         rate_per_kg: parseFloat(formData.ratePerKg[c.color_id]) || 0,
       })),
       invoice_number: formData.invoice_number,
       invoice_date: formData.invoice_date,
+      remarks: formData.remarks, // Include remarks
     };
 
     try {
@@ -202,10 +333,12 @@ const EntryRawStock = () => {
         ratePerKg: {},
         invoice_number: "",
         invoice_date: "",
+        remarks: "",
       });
       setEditingId(null);
       setFormVisible(false);
       fetchEntries();
+      fetchColors(); // Refresh colors in case new custom colors were added
     } catch (err) {
       console.error("Submit Error:", err.response?.data || err.message);
       toast.error("Error submitting entry!");
@@ -220,31 +353,33 @@ const EntryRawStock = () => {
     setEditingId(entry.order_id);
     toast.info("Editing mode enabled");
 
-    // Map details to color objects (prefer color_id if present)
+    // Map details to color objects
     const colors = (entry.details || []).map((d) => {
-      // if backend returns color_id use it; else try to find by name
-      const cid = d.color_id ?? colorOptions.find((c) => c.color_name === d.color)?.color_id;
-      return { color_id: cid, color_name: d.color };
+      return { 
+        color_id: d.color_id, 
+        color_name: d.color,
+        is_custom: false // Assume existing colors are not custom
+      };
     });
 
     const kgPerColor = {};
     const ratePerKg = {};
     (entry.details || []).forEach((d) => {
-      const cid = d.color_id ?? colorOptions.find((c) => c.color_name === d.color)?.color_id;
-      if (cid != null) {
+      if (d.color_id != null) {
         // keep as string so input shows exactly value or empty string
-        kgPerColor[cid] = d.kgs != null ? String(d.kgs) : "";
-        ratePerKg[cid] = d.rate_per_kg != null ? String(d.rate_per_kg) : "";
+        kgPerColor[d.color_id] = d.kgs != null ? String(d.kgs) : "";
+        ratePerKg[d.color_id] = d.rate_per_kg != null ? String(d.rate_per_kg) : "";
       }
     });
 
     setFormData({
       material_grade: entry.material_grade || "",
-      colors: colors.filter((c) => c.color_id != null), // drop unresolved
+      colors,
       kgPerColor,
       ratePerKg,
       invoice_number: entry.invoice_number || "",
       invoice_date: entry.invoice_date ? entry.invoice_date.split("T")[0] : "",
+      remarks: entry.remarks || "",
     });
   };
 
@@ -336,7 +471,14 @@ const EntryRawStock = () => {
       </div>
       <ToastContainer />
 
-      <div className="flex justify-end my-4">
+      <div className="flex justify-end my-4 gap-2">
+        <button
+          onClick={() => setColorManagerVisible(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
+        >
+          <Settings size={18} />
+          Manage Colors
+        </button>
         <button
           onClick={() => {
             setFormVisible(true);
@@ -349,6 +491,7 @@ const EntryRawStock = () => {
               ratePerKg: {},
               invoice_number: "",
               invoice_date: "",
+              remarks: "",
             });
           }}
           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
@@ -356,6 +499,75 @@ const EntryRawStock = () => {
           New Raw Stock
         </button>
       </div>
+
+      {/* Color Manager Modal */}
+      {colorManagerVisible && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-md relative shadow-lg max-h-[90vh] overflow-hidden flex flex-col">
+            <X
+              size={28}
+              className="absolute top-3 right-3 text-red-600 cursor-pointer hover:text-red-800 z-10"
+              onClick={() => setColorManagerVisible(false)}
+            />
+            <h2 className="text-2xl font-bold mb-6 text-center">
+              Manage Colors
+            </h2>
+
+            <div className="overflow-y-auto flex-grow pr-2 -mr-2">
+              <div className="mb-4">
+                <h3 className="font-semibold mb-2">Predefined Colors</h3>
+                <div className="border rounded p-2">
+                  {colorOptions.filter(c => !c.is_custom).length === 0 ? (
+                    <p className="text-gray-500">No predefined colors</p>
+                  ) : (
+                    colorOptions
+                      .filter(c => !c.is_custom)
+                      .map(color => (
+                        <div key={color.color_id} className="flex justify-between items-center py-1 border-b last:border-b-0">
+                          <span>{color.color_name}</span>
+                          <span className="text-xs text-gray-500">Predefined</span>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2">Custom Colors</h3>
+                <div className="border rounded p-2">
+                  {colorOptions.filter(c => c.is_custom).length === 0 ? (
+                    <p className="text-gray-500">No custom colors</p>
+                  ) : (
+                    colorOptions
+                      .filter(c => c.is_custom)
+                      .map(color => (
+                        <div key={color.color_id} className="flex justify-between items-center py-1 border-b last:border-b-0">
+                          <span>{color.color_name}</span>
+                          <button
+                            onClick={() => handleDeleteColorOption(color.color_id, color.color_name)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete this color from the system"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => setColorManagerVisible(false)}
+                  className="w-full bg-gray-600 text-white py-2 rounded font-semibold hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Form */}
       {formVisible && (
@@ -399,7 +611,7 @@ const EntryRawStock = () => {
                   <label className="block font-semibold mb-1">Select Color</label>
                   <select 
                     onChange={handleAddColor} 
-                    className="border p-2 rounded w-full" 
+                    className="border p-2 rounded w-full mb-2" 
                     value=""
                     disabled={loadingColors}
                   >
@@ -418,13 +630,50 @@ const EntryRawStock = () => {
                       ))
                     )}
                   </select>
+                  
+                  {/* Add Custom Color Button */}
+                  {!showCustomColorInput ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomColorInput(true)}
+                      className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      <Plus size={16} /> Add Custom Color
+                    </button>
+                  ) : (
+                    <div className="flex gap-2 mt-2">
+                      <input
+                        type="text"
+                        value={customColorName}
+                        onChange={(e) => setCustomColorName(e.target.value)}
+                        placeholder="Enter custom color name"
+                        className="border p-2 rounded flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomColor}
+                        className="bg-blue-600 text-white px-3 py-2 rounded"
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomColorInput(false)}
+                        className="bg-gray-300 px-3 py-2 rounded"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dynamic color rows (KG + Rate) */}
                 {formData.colors.map((c) => (
-                  <div key={c.color_id} className="grid grid-cols-3 gap-2 items-end">
+                  <div key={c.color_id} className="grid grid-cols-3 gap-2 items-end border-b pb-3">
                     <div>
-                      <label className="block font-semibold">{c.color_name} (KG)</label>
+                      <label className="block font-semibold">
+                        {c.color_name} {c.is_custom && "(Custom)"} (KG)
+                      </label>
                       <input
                         type="number"
                         min="0"
@@ -437,7 +686,9 @@ const EntryRawStock = () => {
                     </div>
 
                     <div>
-                      <label className="block font-semibold">{c.color_name} Rate per KG</label>
+                      <label className="block font-semibold">
+                        {c.color_name} Rate per KG
+                      </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                           <span className="text-gray-500">₹</span>
@@ -454,14 +705,28 @@ const EntryRawStock = () => {
                       </div>
                     </div>
 
-                    <div>
+                    <div className="flex flex-col items-end gap-2">
                       <button
                         type="button"
                         onClick={() => handleRemoveColor(c.color_id)}
                         className="text-red-600 hover:text-red-800"
+                        title="Remove from this entry"
                       >
                         Remove
                       </button>
+                      
+                      {/* Show delete button only for saved custom colors */}
+                      {c.is_custom && !c.color_id.toString().startsWith('custom-') && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCustomColor(c.color_id, c.color_name)}
+                          className="text-red-800 hover:text-red-900 text-xs flex items-center gap-1"
+                          title="Permanently delete this custom color"
+                        >
+                          <Trash2 size={14} />
+                          Delete Color
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -518,6 +783,19 @@ const EntryRawStock = () => {
                   />
                 </div>
 
+                {/* Remarks */}
+                <div>
+                  <label className="block font-semibold mb-1">Remarks (Optional)</label>
+                  <textarea
+                    name="remarks"
+                    value={formData.remarks}
+                    onChange={handleChange}
+                    className="border p-2 rounded w-full"
+                    rows="3"
+                    placeholder="Add any remarks here..."
+                  />
+                </div>
+
                 <button
                   type="submit"
                   disabled={submitting}
@@ -559,6 +837,7 @@ const EntryRawStock = () => {
                 <th className="px-4 py-2 border">Rate / KG</th>
                 <th className="px-4 py-2 border">Total KG</th>
                 <th className="px-4 py-2 border">Total Amount</th>
+                <th className="px-4 py-2 border">Remarks</th>
                 <th className="px-4 py-2 border">Edit</th>
                 <th className="px-4 py-2 border">Delete Color</th>
                 <th className="px-4 py-2 border">Delete Group</th>
@@ -567,7 +846,7 @@ const EntryRawStock = () => {
             <tbody className="text-center">
               {entries.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-4">
+                  <td colSpan={12} className="py-4">
                     No entries yet
                   </td>
                 </tr>
@@ -610,6 +889,11 @@ const EntryRawStock = () => {
                           {isFirst && (
                             <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
                               ₹ {formatNumber(entry.total_amount)}
+                            </td>
+                          )}
+                          {isFirst && (
+                            <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                              {entry.remarks || "-"}
                             </td>
                           )}
 
@@ -658,6 +942,7 @@ const EntryRawStock = () => {
                       </td>
                       <td className="px-4 py-2 border">{formatNumber(entry.total_kgs)}</td>
                       <td className="px-4 py-2 border">₹ {formatNumber(entry.total_amount)}</td>
+                      <td className="px-4 py-2 border">{entry.remarks || "-"}</td>
                       <td className="px-4 py-2 border">
                         <button onClick={() => handleEdit(entry)} className="text-blue-600 hover:text-blue-800">
                           <Edit2 />

@@ -4,7 +4,7 @@ const pool = require("../config/db");
 // @route POST /api/raw-stock
 const createRawStock = async (req, res) => {
   try {
-    const { material_grade, invoice_number, invoice_date, colors } = req.body;
+    const { material_grade, invoice_number, invoice_date, colors, remarks } = req.body;
 
     if (!material_grade || !invoice_number || !invoice_date || !colors || colors.length === 0) {
       return res.status(400).json({ message: "All fields are required" });
@@ -20,19 +20,31 @@ const createRawStock = async (req, res) => {
 
     // insert main stock entry
     const stockResult = await pool.query(
-      `INSERT INTO entry_raw_stock (material_grade, total_kgs, total_amount, invoice_number, invoice_date)
-       VALUES ($1, $2, $3, $4, $5) RETURNING order_id`,
-      [material_grade, total_kgs, total_amount, invoice_number, invoice_date]
+      `INSERT INTO entry_raw_stock (material_grade, total_kgs, total_amount, invoice_number, invoice_date, remarks)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING order_id`,
+      [material_grade, total_kgs, total_amount, invoice_number, invoice_date, remarks || null]
     );
 
     const order_id = stockResult.rows[0].order_id;
 
     // insert details per color
     for (const c of colors) {
+      // Check if this is a custom color that needs to be created
+      let color_id = c.color_id;
+      
+      if (c.is_custom && c.color_name) {
+        // Insert custom color and get its ID
+        const colorResult = await pool.query(
+          `INSERT INTO colors (color_name, is_custom) VALUES ($1, TRUE) RETURNING color_id`,
+          [c.color_name]
+        );
+        color_id = colorResult.rows[0].color_id;
+      }
+
       await pool.query(
         `INSERT INTO entry_raw_stock_details (order_id, color_id, kgs, rate_per_kg)
          VALUES ($1, $2, $3, $4)`,
-        [order_id, c.color_id, c.kgs, c.rate_per_kg]
+        [order_id, color_id, c.kgs, c.rate_per_kg]
       );
     }
 
@@ -55,9 +67,11 @@ const getRawStocks = async (req, res) => {
 
     for (const stock of stockResult.rows) {
       const detailsResult = await pool.query(
-        `SELECT d.detail_id, d.kgs, d.rate_per_kg, d.total_price, c.color_name AS color
+        `SELECT d.detail_id, d.kgs, d.rate_per_kg, d.total_price, 
+                COALESCE(c.color_name, 'Unknown') AS color,
+                c.color_id
          FROM entry_raw_stock_details d
-         JOIN colors c ON d.color_id = c.color_id
+         LEFT JOIN colors c ON d.color_id = c.color_id
          WHERE d.order_id = $1`,
         [stock.order_id]
       );
@@ -77,7 +91,7 @@ const getRawStocks = async (req, res) => {
 const updateRawStock = async (req, res) => {
   try {
     const { id } = req.params;
-    const { material_grade, invoice_number, invoice_date, colors } = req.body;
+    const { material_grade, invoice_number, invoice_date, colors, remarks } = req.body;
 
     if (!material_grade || !invoice_number || !invoice_date || !colors || colors.length === 0) {
       return res.status(400).json({ message: "All fields are required" });
@@ -92,9 +106,9 @@ const updateRawStock = async (req, res) => {
 
     await pool.query(
       `UPDATE entry_raw_stock
-       SET material_grade=$1, total_kgs=$2, total_amount=$3, invoice_number=$4, invoice_date=$5
-       WHERE order_id=$6`,
-      [material_grade, total_kgs, total_amount, invoice_number, invoice_date, id]
+       SET material_grade=$1, total_kgs=$2, total_amount=$3, invoice_number=$4, invoice_date=$5, remarks=$6
+       WHERE order_id=$7`,
+      [material_grade, total_kgs, total_amount, invoice_number, invoice_date, remarks || null, id]
     );
 
     // remove previous details
@@ -102,10 +116,32 @@ const updateRawStock = async (req, res) => {
 
     // insert updated details
     for (const c of colors) {
+      // Check if this is a custom color that needs to be created
+      let color_id = c.color_id;
+      
+      if (c.is_custom && c.color_name) {
+        // Check if custom color already exists
+        const colorCheck = await pool.query(
+          `SELECT color_id FROM colors WHERE color_name = $1 AND is_custom = TRUE`,
+          [c.color_name]
+        );
+        
+        if (colorCheck.rows.length > 0) {
+          color_id = colorCheck.rows[0].color_id;
+        } else {
+          // Insert custom color and get its ID
+          const colorResult = await pool.query(
+            `INSERT INTO colors (color_name, is_custom) VALUES ($1, TRUE) RETURNING color_id`,
+            [c.color_name]
+          );
+          color_id = colorResult.rows[0].color_id;
+        }
+      }
+
       await pool.query(
         `INSERT INTO entry_raw_stock_details (order_id, color_id, kgs, rate_per_kg)
          VALUES ($1, $2, $3, $4)`,
-        [id, c.color_id, c.kgs, c.rate_per_kg]
+        [id, color_id, c.kgs, c.rate_per_kg]
       );
     }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axiosInstance from "../../utils/axiosInstance";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Trash2, Edit2, X, LoaderCircle, Plus, MoreVertical } from "lucide-react";
+import { Trash2, Edit2, X, LoaderCircle, Plus, MoreVertical, Settings, AlertTriangle } from "lucide-react";
 import Title from "../components/Title";
 import { API_PATHS } from "../../utils/apiPaths";
 
@@ -42,6 +42,7 @@ const EntryProduct = () => {
   const [entries, setEntries] = useState([]);
   const [sapProducts, setSapProducts] = useState([]);
   const [formVisible, setFormVisible] = useState(false);
+  const [sapManagerVisible, setSapManagerVisible] = useState(false);
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [loadingSapProducts, setLoadingSapProducts] = useState(true);
   const [showNewSapForm, setShowNewSapForm] = useState(false);
@@ -68,7 +69,7 @@ const EntryProduct = () => {
     sap_name: "",
     part_description: "",
     unit: "",
-    color: "NA",
+    color: "",
     remarks: "",
   });
 
@@ -77,8 +78,9 @@ const EntryProduct = () => {
     sap_name: "",
     part_description: "",
     unit: "",
-    color: "NA",
+    color: "",
     remarks: "",
+    is_custom: false,
   });
 
   const [editingId, setEditingId] = useState(null);
@@ -231,7 +233,7 @@ const EntryProduct = () => {
         sap_name: "",
         part_description: "",
         unit: "",
-        color: "NA",
+        color: "",
         remarks: "",
       });
       setShowCustomColorInput(false);
@@ -290,8 +292,9 @@ const EntryProduct = () => {
         sap_name: "",
         part_description: "",
         unit: "",
-        color: "NA",
+        color: "",
         remarks: "",
+        is_custom: false,
       });
       setShowEditCustomColorInput(false);
       setEditCustomColor("");
@@ -303,32 +306,17 @@ const EntryProduct = () => {
     }
   };
 
-  const handleDeleteSap = async (sapName) => {
+  const handleDeleteSap = async (sapName, isCustom) => {
     try {
-      // First check if there are any associated entries to warn the user
-      const entriesResponse = await axiosInstance.get(API_PATHS.ENTRY_PRODUCTS.GET);
-      const associatedEntries = entriesResponse.data.filter(entry => entry.sap_name === sapName);
-      const entryCount = associatedEntries.length;
-
-      // Proceed with deletion (CASCADE will handle associated entries)
+      // Proceed with deletion
       await axiosInstance.delete(API_PATHS.SAP_PRODUCTS.DELETE(sapName));
       
-      // Show appropriate success message with 3-second duration
-      if (entryCount > 0) {
-        toast.success(`SAP product and ${entryCount} associated ${entryCount === 1 ? 'entry' : 'entries'} deleted successfully!`, {
-          autoClose: 3000
-        });
-      } else {
-        toast.success("SAP product deleted successfully!", {
-          autoClose: 3000
-        });
-      }
+      toast.success("SAP product deleted successfully!", {
+        autoClose: 3000
+      });
       
       // Remove from the SAP products list
       setSapProducts(prev => prev.filter(product => product.sap_name !== sapName));
-      
-      // Refresh entries to reflect the changes
-      fetchEntries();
       
       // If the deleted product is currently selected, clear the form
       if (formData.sap_name === sapName) {
@@ -356,14 +344,15 @@ const EntryProduct = () => {
       sap_name: sapProduct.sap_name,
       part_description: sapProduct.part_description,
       unit: sapProduct.unit,
-      color: sapProduct.color || "NA",
+      color: sapProduct.color || "",
       remarks: sapProduct.remarks || "",
+      is_custom: sapProduct.is_custom || false,
     });
     setShowEditSapForm(true);
     setSapActionsOpen(null);
   };
 
-  const confirmDeleteSap = (sapName) => {
+  const confirmDeleteSap = (sapName, isCustom) => {
     // First check if there are any associated entries
     const associatedEntries = entries.filter(entry => entry.sap_name === sapName);
     const entryCount = associatedEntries.length;
@@ -374,11 +363,19 @@ const EntryProduct = () => {
         <div>
           <p className="font-semibold">Warning: This SAP product is used in {entryCount} entries</p>
           <p className="text-sm text-red-600 mt-1">Deleting it will also delete all associated entries!</p>
+          {!isCustom && (
+            <div className="flex items-start mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+              <AlertTriangle size={16} className="text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-sm text-yellow-700">
+                This is a predefined SAP product. Deleting it may affect system functionality.
+              </p>
+            </div>
+          )}
           <p className="text-sm mt-2">Are you sure you want to proceed?</p>
           <div className="flex justify-end mt-3 gap-2">
             <button className="bg-red-600 text-white px-3 py-1 rounded text-sm"
               onClick={async () => {
-                await handleDeleteSap(sapName);
+                await handleDeleteSap(sapName, isCustom);
                 toast.dismiss();
               }}
             >
@@ -396,10 +393,18 @@ const EntryProduct = () => {
       const confirmToast = ({ closeToast }) => (
         <div>
           <p>Are you sure you want to delete this SAP product?</p>
+          {!isCustom && (
+            <div className="flex items-start mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+              <AlertTriangle size={16} className="text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-sm text-yellow-700">
+                This is a predefined SAP product. Deleting it may affect system functionality.
+              </p>
+            </div>
+          )}
           <div className="flex justify-end mt-2 gap-2">
             <button className="bg-red-600 text-white px-2 py-1 rounded"
               onClick={async () => {
-                await handleDeleteSap(sapName);
+                await handleDeleteSap(sapName, isCustom);
                 toast.dismiss();
               }}
             >
@@ -497,7 +502,7 @@ const EntryProduct = () => {
           </button>
           <button className="bg-gray-300 px-2 py-1 rounded" onClick={() => toast.dismiss()}>
             No
-          </button>
+            </button>
         </div>
       </div>
     );
@@ -516,13 +521,147 @@ const EntryProduct = () => {
 
       <ToastContainer position="top-right" autoClose={3000} />
 
-      <div className="flex justify-end my-4">
+      <div className="flex justify-end my-4 gap-2">
+        <button
+          onClick={() => setSapManagerVisible(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
+        >
+          <Settings size={18} />
+          Manage SAP Products
+        </button>
         <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           onClick={() => setFormVisible(true)}
         >
           {editingId ? "Edit Product" : "Add Product"}
         </button>
       </div>
+
+      {/* SAP Manager Modal */}
+      {sapManagerVisible && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-6xl relative shadow-lg max-h-[90vh] overflow-hidden flex flex-col">
+            <X
+              size={28}
+              className="absolute top-3 right-3 text-red-600 cursor-pointer hover:text-red-800 z-10"
+              onClick={() => setSapManagerVisible(false)}
+            />
+            <h2 className="text-2xl font-bold mb-6 text-center">
+              Manage SAP Products
+            </h2>
+
+            <div className="overflow-y-auto flex-grow pr-2 -mr-2">
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">All SAP Products</h3>
+                  <button
+                    onClick={() => {
+                      setShowNewSapForm(true);
+                      setSapManagerVisible(false);
+                      setFormVisible(true);
+                    }}
+                    className="bg-green-600 text-white px-3 py-1 rounded flex items-center gap-1"
+                  >
+                    <Plus size={16} />
+                    Add New SAP
+                  </button>
+                </div>
+                
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="min-w-full">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-2 text-left">SAP Name</th>
+                        <th className="px-4 py-2 text-left">Part Description</th>
+                        <th className="px-4 py-2 text-left">Unit</th>
+                        <th className="px-4 py-2 text-left">Color</th>
+                        <th className="px-4 py-2 text-left">Remarks</th>
+                        <th className="px-4 py-2 text-left">Type</th>
+                        <th className="px-4 py-2 text-left">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sapProducts.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" className="px-4 py-4 text-center text-gray-500">
+                            No SAP products found
+                          </td>
+                        </tr>
+                      ) : (
+                        sapProducts.map((product) => (
+                          <tr key={product.sap_name} className="border-t hover:bg-gray-50">
+                            <td className="px-4 py-3">{product.sap_name}</td>
+                            <td className="px-4 py-3">{product.part_description}</td>
+                            <td className="px-4 py-3">{product.unit}</td>
+                            <td className="px-4 py-3">
+                              {product.color ? (
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="w-4 h-4 rounded-full border"
+                                    style={{ 
+                                      backgroundColor: colorMap[product.color.toLowerCase()] || "#ccc",
+                                      borderColor: product.color.toLowerCase() === 'white' ? '#ccc' : 'transparent'
+                                    }}
+                                  ></div>
+                                  {product.color}
+                                </div>
+                              ) : (
+                                "-"
+                              )}
+                            </td>
+                            <td className="px-4 py-3">{product.remarks || "-"}</td>
+                            <td className="px-4 py-3">
+                              {product.is_custom ? (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                  Custom
+                                </span>
+                              ) : (
+                                <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                                  Predefined
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSapManagerVisible(false);
+                                    setFormVisible(true);
+                                    openEditSapForm(product);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800"
+                                  title="Edit SAP Product"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button
+                                  onClick={() => confirmDeleteSap(product.sap_name, product.is_custom)}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Delete SAP Product"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => setSapManagerVisible(false)}
+                  className="w-full bg-gray-600 text-white py-2 rounded font-semibold hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {formVisible && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-start pt-20 z-50">
@@ -635,7 +774,8 @@ const EntryProduct = () => {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  confirmDeleteSap(formData.sap_name);
+                                  const selected = sapProducts.find(p => p.sap_name === formData.sap_name);
+                                  if (selected) confirmDeleteSap(formData.sap_name, selected.is_custom);
                                 }}
                                 className="flex items-center w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
                               >
@@ -698,7 +838,7 @@ const EntryProduct = () => {
                   <input
                     type="text"
                     name="color"
-                    value={formData.color === "NA" ? "-" : formData.color}
+                    value={formData.color || "-"}
                     readOnly
                     className="border p-1 rounded w-full bg-gray-100"
                   />
@@ -791,7 +931,7 @@ const EntryProduct = () => {
                     onChange={handleNewSapChange}
                     className="border p-1 rounded w-full mb-1"
                   >
-                    <option value="NA">Not Applicable</option>
+                    <option value="">--Select a color--</option>
                     <option value="BLACK">Black</option>
                     <option value="BLUE">Blue</option>
                     <option value="GREEN">Green</option>
@@ -927,7 +1067,7 @@ const EntryProduct = () => {
                     onChange={handleEditSapChange}
                     className="border p-1 rounded w-full mb-1"
                   >
-                    <option value="NA">Not Applicable</option>
+                    <option value="">--Select a color--</option>
                     <option value="BLACK">Black</option>
                     <option value="BLUE">Blue</option>
                     <option value="GREEN">Green</option>
@@ -1043,12 +1183,12 @@ const EntryProduct = () => {
                     <td className="px-4 py-2 border">{entry.unit}</td>
                     <td className="px-4 py-2 border">{entry.remarks}</td>
 
-                    {/* Color column - updated to show "-" for NA values and proper white color */}
+                    {/* Color column - updated to show "-" for empty values and proper white color */}
                     <td className="px-4 py-2 border">
                       {entry.sap_name ? (
                         (() => {
                           const color = sapProducts.find(p => p.sap_name === entry.sap_name)?.color || "";
-                          return color && color !== "NA" ? (
+                          return color ? (
                             <div className="flex justify-center gap-1">
                               {color.split("/").map((c, idx) => (
                                 <div
