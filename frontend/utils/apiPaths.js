@@ -20,6 +20,9 @@ export const API_PATHS = {
   },
   SAP_PRODUCTS: {
     GET: "/api/sap-products",
+    POST: "/api/sap-products",
+    PUT: (sap_name) => `/api/sap-products/${sap_name}`,
+    DELETE: (sap_name) => `/api/sap-products/${sap_name}`,
   },
   PREDICTION: {
     SALES: '/api/prediction/sales',

@@ -2,15 +2,39 @@ const pool = require("../config/db");
 
 // @desc Add new entry product
 // @route POST /api/entry-products
+// @desc Add new entry product
+// @route POST /api/entry-products
 const createEntryProduct = async (req, res) => {
   try {
-    const { client_name, sap_name, quantity } = req.body;
+    const { client_name, sap_name, quantity, part_description, unit, remarks, color } = req.body;
 
     // validate required fields
     if (!client_name || !sap_name || !quantity) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({ message: "Client name, SAP name, and quantity are required" });
     }
 
+    // Check if SAP product exists, if not create it
+    const sapCheck = await pool.query(
+      "SELECT * FROM sap_products WHERE sap_name = $1",
+      [sap_name]
+    );
+
+    if (sapCheck.rows.length === 0) {
+      // Create new SAP product if it doesn't exist
+      if (!part_description || !unit) {
+        return res.status(400).json({ 
+          message: "Part description and unit are required when creating new SAP product" 
+        });
+      }
+
+      await pool.query(
+        `INSERT INTO sap_products (sap_name, part_description, unit, remarks, color) 
+         VALUES ($1, $2, $3, $4, $5)`,
+        [sap_name, part_description, unit, remarks || null, color || 'NA']
+      );
+    }
+
+    // Create the entry product
     const result = await pool.query(
       `INSERT INTO entry_products (client_name, sap_name, quantity) VALUES ($1, $2, $3) RETURNING *`,
       [client_name, sap_name, quantity]

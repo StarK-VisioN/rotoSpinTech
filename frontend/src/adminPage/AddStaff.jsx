@@ -3,7 +3,7 @@ import axiosInstance from "../../utils/axiosInstance";
 import { API_PATHS } from "../../utils/apiPaths";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Trash2, Edit2, X } from "lucide-react";
+import { Trash2, Edit2, X, LoaderCircle } from "lucide-react";
 import Title from "../components/Title";
 
 const AddStaff = () => {
@@ -19,15 +19,20 @@ const AddStaff = () => {
   const [editingId, setEditingId] = useState(null);
   const [formVisible, setFormVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingStaff, setLoadingStaff] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   // function to fetch Staff
   const fetchStaff = async () => {
     try {
+      setLoadingStaff(true);
       const res = await axiosInstance.get(API_PATHS.STAFF.GET);
       setStaffList(res.data);
     } catch (err) {
       console.error(err);
       toast.error("Error fetching staff data!");
+    } finally {
+      setLoadingStaff(false);
     }
   };
 
@@ -43,7 +48,7 @@ const AddStaff = () => {
   // handling form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     try {
       if (editingId) {
         await axiosInstance.put(API_PATHS.STAFF.PUT(editingId), formData);
@@ -60,7 +65,7 @@ const AddStaff = () => {
       console.error(err);
       toast.error("Error submitting staff!");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -86,6 +91,7 @@ const AddStaff = () => {
           <button className="bg-red-600 text-white px-2 py-1 rounded"
             onClick={async () => {
               try {
+                setLoading(true);
                 await axiosInstance.delete(API_PATHS.STAFF.DELETE(id));
                 fetchStaff();
                 toast.dismiss();
@@ -93,6 +99,8 @@ const AddStaff = () => {
               } catch (err) {
                 console.error(err);
                 toast.error("Error deleting staff!");
+              } finally {
+                setLoading(false);
               }
             }}
           >
@@ -119,8 +127,15 @@ const AddStaff = () => {
 
       {/* Add Staff Button */}
       <div className="flex justify-end my-4">
-        <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onClick={() => setFormVisible(true)}>
-          {editingId ? "Edit Staff" : "New Staff"}
+        <button 
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" 
+          onClick={() => {
+            setFormVisible(true);
+            setEditingId(null);
+            setFormData({ position: "PM", name: "", working_id: "", password: "" });
+          }}
+        >
+          New Staff
         </button>
       </div>
 
@@ -193,61 +208,77 @@ const AddStaff = () => {
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700"
+                disabled={submitting}
+                className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {editingId ? "Update" : "Submit"}
+                {submitting ? (
+                  <>
+                    <LoaderCircle className="animate-spin" size={20} />
+                    {editingId ? "Updating..." : "Submitting..."}
+                  </>
+                ) : (
+                  editingId ? "Update" : "Submit"
+                )}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Table */}
+      {/* Table with loading state */}
       <div className="overflow-x-auto mt-6">
-        <table className="min-w-full border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="px-4 py-2 border">ID</th>
-              <th className="px-4 py-2 border">Position</th>
-              <th className="px-4 py-2 border">Name</th>
-              <th className="px-4 py-2 border">Working ID</th>
-              <th className="px-4 py-2 border">Password</th>
-              <th className="px-4 py-2 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {staffList.length ? (
-              staffList.map((staff) => (
-                <tr key={staff.staff_id} className="text-center">
-                  <td className="px-4 py-2 border">{staff.staff_id}</td>
-                  <td className="px-4 py-2 border">{staff.position}</td>
-                  <td className="px-4 py-2 border">{staff.name}</td>
-                  <td className="px-4 py-2 border">{staff.working_id}</td>
-                  <td className="px-4 py-2 border">{staff.original_password}</td>
-                  <td className="px-4 py-2 border flex justify-center gap-2">
-                    <button className="text-blue-600 hover:text-blue-800"
-                      onClick={() => handleEdit(staff)}
-                    >
-                      <Edit2 />
-                    </button>
-                    <button className="text-red-600 hover:text-red-800"
-                      onClick={() => handleDelete(staff.staff_id)}
-                    >
-                      <Trash2 />
-                    </button>
+        {loadingStaff ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="text-center">
+              <LoaderCircle className="animate-spin mx-auto mb-4" size={48} />
+              <p className="text-gray-600">Loading staff data...</p>
+            </div>
+          </div>
+        ) : (
+          <table className="min-w-full border border-gray-300">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="px-4 py-2 border">ID</th>
+                <th className="px-4 py-2 border">Position</th>
+                <th className="px-4 py-2 border">Name</th>
+                <th className="px-4 py-2 border">Working ID</th>
+                <th className="px-4 py-2 border">Password</th>
+                <th className="px-4 py-2 border">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staffList.length ? (
+                staffList.map((staff) => (
+                  <tr key={staff.staff_id} className="text-center">
+                    <td className="px-4 py-2 border">{staff.staff_id}</td>
+                    <td className="px-4 py-2 border">{staff.position}</td>
+                    <td className="px-4 py-2 border">{staff.name}</td>
+                    <td className="px-4 py-2 border">{staff.working_id}</td>
+                    <td className="px-4 py-2 border">{staff.original_password}</td>
+                    <td className="px-4 py-2 border flex justify-center gap-2">
+                      <button className="text-blue-600 hover:text-blue-800"
+                        onClick={() => handleEdit(staff)}
+                      >
+                        <Edit2 />
+                      </button>
+                      <button className="text-red-600 hover:text-red-800"
+                        onClick={() => handleDelete(staff.staff_id)}
+                      >
+                        <Trash2 />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="text-center p-4">
+                    No staff found.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="text-center p-4">
-                  No staff found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

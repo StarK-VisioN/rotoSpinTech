@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Trash2, Edit2, X } from "lucide-react";
+import { Trash2, Edit2, X, LoaderCircle } from "lucide-react";
 import Title from "../components/Title";
 
 const BASE_URL = import.meta.env.VITE_APP_BACKEND_URL;
@@ -19,6 +19,10 @@ const getToken = () => {
 const EntryRawStock = () => {
   const [formVisible, setFormVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingEntries, setLoadingEntries] = useState(true);
+  const [loadingColors, setLoadingColors] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     material_grade: "",
@@ -42,6 +46,7 @@ const EntryRawStock = () => {
   // fetching available colors from backend
   const fetchColors = async () => {
     try {
+      setLoadingColors(true);
       const token = getToken();
       const res = await axios.get(`${BASE_URL}/api/colors`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -49,12 +54,16 @@ const EntryRawStock = () => {
       setColorOptions(res.data || []);
     } catch (err) {
       console.error("Fetch Colors Error:", err.message);
+      toast.error("Failed to fetch colors!");
+    } finally {
+      setLoadingColors(false);
     }
   };
 
   // fetch existing entries
   const fetchEntries = async () => {
     try {
+      setLoadingEntries(true);
       const token = getToken();
       const res = await axios.get(`${BASE_URL}/api/raw-stock`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -62,6 +71,9 @@ const EntryRawStock = () => {
       setEntries(res.data || []);
     } catch (err) {
       console.error("Fetch Entries Error:", err.message);
+      toast.error("Failed to fetch raw stock entries!");
+    } finally {
+      setLoadingEntries(false);
     }
   };
 
@@ -132,13 +144,29 @@ const EntryRawStock = () => {
   // Create / Update entry
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
 
     // basic validation
-    if (!formData.material_grade) return toast.error("Select material grade");
-    if (!formData.invoice_number) return toast.error("Enter invoice number");
-    if (!formData.invoice_date) return toast.error("Select invoice date");
-    if (!formData.colors || formData.colors.length === 0)
-      return toast.error("Select at least one color");
+    if (!formData.material_grade) {
+      toast.error("Select material grade");
+      setSubmitting(false);
+      return;
+    }
+    if (!formData.invoice_number) {
+      toast.error("Enter invoice number");
+      setSubmitting(false);
+      return;
+    }
+    if (!formData.invoice_date) {
+      toast.error("Select invoice date");
+      setSubmitting(false);
+      return;
+    }
+    if (!formData.colors || formData.colors.length === 0) {
+      toast.error("Select at least one color");
+      setSubmitting(false);
+      return;
+    }
 
     // prepare payload
     const payload = {
@@ -181,6 +209,8 @@ const EntryRawStock = () => {
     } catch (err) {
       console.error("Submit Error:", err.response?.data || err.message);
       toast.error("Error submitting entry!");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -228,6 +258,7 @@ const EntryRawStock = () => {
             className="bg-red-600 text-white px-2 py-1 rounded"
             onClick={async () => {
               try {
+                setLoading(true);
                 const token = getToken();
                 await axios.delete(`${BASE_URL}/api/raw-stock/${order_id}`, {
                   headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -238,6 +269,8 @@ const EntryRawStock = () => {
               } catch (err) {
                 console.error("Delete Error:", err.response?.data || err.message);
                 toast.error("Error deleting entry!");
+              } finally {
+                setLoading(false);
               }
             }}
           >
@@ -265,6 +298,7 @@ const EntryRawStock = () => {
             className="bg-red-600 text-white px-2 py-1 rounded"
             onClick={async () => {
               try {
+                setLoading(true);
                 const token = getToken();
                 await axios.delete(`${BASE_URL}/api/raw-stock/${order_id}/color/${detail_id}`, {
                   headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -276,6 +310,8 @@ const EntryRawStock = () => {
                 console.error("Delete Color Error:", err.response?.data || err.message);
                 if (err.response?.status === 404) toast.error("Color not found or already deleted");
                 else toast.error("Error deleting color!");
+              } finally {
+                setLoading(false);
               }
             }}
           >
@@ -361,17 +397,26 @@ const EntryRawStock = () => {
                 {/* Select / Add Color */}
                 <div>
                   <label className="block font-semibold mb-1">Select Color</label>
-                  <select onChange={handleAddColor} className="border p-2 rounded w-full" value="">
+                  <select 
+                    onChange={handleAddColor} 
+                    className="border p-2 rounded w-full" 
+                    value=""
+                    disabled={loadingColors}
+                  >
                     <option value="">--Select a color--</option>
-                    {colorOptions.map((c) => (
-                      <option
-                        key={c.color_id}
-                        value={c.color_id}
-                        disabled={formData.colors.some((fc) => String(fc.color_id) === String(c.color_id))}
-                      >
-                        {c.color_name}
-                      </option>
-                    ))}
+                    {loadingColors ? (
+                      <option value="" disabled>Loading colors...</option>
+                    ) : (
+                      colorOptions.map((c) => (
+                        <option
+                          key={c.color_id}
+                          value={c.color_id}
+                          disabled={formData.colors.some((fc) => String(fc.color_id) === String(c.color_id))}
+                        >
+                          {c.color_name}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -475,9 +520,17 @@ const EntryRawStock = () => {
 
                 <button
                   type="submit"
-                  className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700"
+                  disabled={submitting}
+                  className="w-full bg-green-600 text-white py-2 rounded font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Submit
+                  {submitting ? (
+                    <>
+                      <LoaderCircle className="animate-spin" size={20} />
+                      {editingId ? "Updating..." : "Submitting..."}
+                    </>
+                  ) : (
+                    editingId ? "Update" : "Submit"
+                  )}
                 </button>
               </form>
             </div>
@@ -485,135 +538,144 @@ const EntryRawStock = () => {
         </div>
       )}
 
-      {/* Grouped table: common fields row-spanned; each color gets separate row */}
+      {/* Table with loading state */}
       <div className="overflow-x-auto mt-6">
-        <table className="min-w-full border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100 text-center">
-              <th className="px-4 py-2 border">Material</th>
-              <th className="px-4 py-2 border">Invoice Number</th>
-              <th className="px-4 py-2 border">Invoice Date</th>
-              <th className="px-4 py-2 border">Color</th>
-              <th className="px-4 py-2 border">KG</th>
-              <th className="px-4 py-2 border">Rate / KG</th>
-              <th className="px-4 py-2 border">Total KG</th>
-              <th className="px-4 py-2 border">Total Amount</th>
-              <th className="px-4 py-2 border">Edit</th>
-              <th className="px-4 py-2 border">Delete Color</th>
-              <th className="px-4 py-2 border">Delete Group</th>
-            </tr>
-          </thead>
-          <tbody className="text-center">
-            {entries.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="py-4">
-                  No entries yet
-                </td>
+        {loadingEntries ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="text-center">
+              <LoaderCircle className="animate-spin mx-auto mb-4" size={48} />
+              <p className="text-gray-600">Loading raw stock entries...</p>
+            </div>
+          </div>
+        ) : (
+          <table className="min-w-full border border-gray-300">
+            <thead>
+              <tr className="bg-gray-100 text-center">
+                <th className="px-4 py-2 border">Material Grade</th>
+                <th className="px-4 py-2 border">Invoice Number</th>
+                <th className="px-4 py-2 border">Invoice Date</th>
+                <th className="px-4 py-2 border">Color</th>
+                <th className="px-4 py-2 border">KG</th>
+                <th className="px-4 py-2 border">Rate / KG</th>
+                <th className="px-4 py-2 border">Total KG</th>
+                <th className="px-4 py-2 border">Total Amount</th>
+                <th className="px-4 py-2 border">Edit</th>
+                <th className="px-4 py-2 border">Delete Color</th>
+                <th className="px-4 py-2 border">Delete Group</th>
               </tr>
-            ) : (
-              entries.map((entry) => {
-                const rows = entry.details || [];
-                const rowSpan = Math.max(rows.length, 1);
+            </thead>
+            <tbody className="text-center">
+              {entries.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="py-4">
+                    No entries yet
+                  </td>
+                </tr>
+              ) : (
+                entries.map((entry) => {
+                  const rows = entry.details || [];
+                  const rowSpan = Math.max(rows.length, 1);
 
-                // render per-color rows while showing group-level cells once with rowSpan
-                return rows.length > 0 ? (
-                  rows.map((d, idx) => {
-                    const isFirst = idx === 0;
-                    return (
-                      <tr key={`${entry.order_id}-${d.detail_id ?? idx}`}>
-                        {isFirst && (
-                          <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
-                            {entry.material_grade}
-                          </td>
-                        )}
-                        {isFirst && (
-                          <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
-                            {entry.invoice_number}
-                          </td>
-                        )}
-                        {isFirst && (
-                          <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
-                            {entry.invoice_date ? entry.invoice_date.split("T")[0] : ""}
-                          </td>
-                        )}
+                  // render per-color rows while showing group-level cells once with rowSpan
+                  return rows.length > 0 ? (
+                    rows.map((d, idx) => {
+                      const isFirst = idx === 0;
+                      return (
+                        <tr key={`${entry.order_id}-${d.detail_id ?? idx}`}>
+                          {isFirst && (
+                            <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                              {entry.material_grade}
+                            </td>
+                          )}
+                          {isFirst && (
+                            <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                              {entry.invoice_number}
+                            </td>
+                          )}
+                          {isFirst && (
+                            <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                              {entry.invoice_date ? entry.invoice_date.split("T")[0] : ""}
+                            </td>
+                          )}
 
-                        <td className="px-4 py-2 border">{d.color}</td>
-                        <td className="px-4 py-2 border">{formatNumber(d.kgs)}</td>
-                        <td className="px-4 py-2 border">₹ {formatNumber(d.rate_per_kg)}</td>
+                          <td className="px-4 py-2 border">{d.color}</td>
+                          <td className="px-4 py-2 border">{formatNumber(d.kgs)}</td>
+                          <td className="px-4 py-2 border">₹ {formatNumber(d.rate_per_kg)}</td>
 
-                        {isFirst && (
-                          <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
-                            {formatNumber(entry.total_kgs)}
-                          </td>
-                        )}
-                        {isFirst && (
-                          <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
-                            ₹ {formatNumber(entry.total_amount)}
-                          </td>
-                        )}
+                          {isFirst && (
+                            <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                              {formatNumber(entry.total_kgs)}
+                            </td>
+                          )}
+                          {isFirst && (
+                            <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                              ₹ {formatNumber(entry.total_amount)}
+                            </td>
+                          )}
 
-                        <td className="px-4 py-2 border">
-                          <button
-                            onClick={() => handleEdit(entry)}
-                            className="text-blue-600 hover:text-blue-800"
-                            title="Edit this entry"
-                          >
-                            <Edit2 />
-                          </button>
-                        </td>
-
-                        <td className="px-4 py-2 border">
-                          <button
-                            onClick={() => handleDeleteColor(entry.order_id, d.detail_id)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Delete this color"
-                          >
-                            <Trash2 />
-                          </button>
-                        </td>
-
-                        {isFirst && (
-                          <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                          <td className="px-4 py-2 border">
                             <button
-                              onClick={() => handleDeleteGroup(entry.order_id)}
+                              onClick={() => handleEdit(entry)}
+                              className="text-blue-600 hover:text-blue-800"
+                              title="Edit this entry"
+                            >
+                              <Edit2 />
+                            </button>
+                          </td>
+
+                          <td className="px-4 py-2 border">
+                            <button
+                              onClick={() => handleDeleteColor(entry.order_id, d.detail_id)}
                               className="text-red-600 hover:text-red-800"
-                              title="Delete entire entry"
+                              title="Delete this color"
                             >
                               <Trash2 />
                             </button>
                           </td>
-                        )}
-                      </tr>
-                    );
-                  })
-                ) : (
-                  // fallback (shouldn't normally happen)
-                  <tr key={`${entry.order_id}-empty`}>
-                    <td className="px-4 py-2 border">{entry.material_grade}</td>
-                    <td className="px-4 py-2 border">{entry.invoice_number}</td>
-                    <td className="px-4 py-2 border">{entry.invoice_date?.split("T")[0] || ""}</td>
-                    <td className="px-4 py-2 border" colSpan={3}>
-                      No colors
-                    </td>
-                    <td className="px-4 py-2 border">{formatNumber(entry.total_kgs)}</td>
-                    <td className="px-4 py-2 border">₹ {formatNumber(entry.total_amount)}</td>
-                    <td className="px-4 py-2 border">
-                      <button onClick={() => handleEdit(entry)} className="text-blue-600 hover:text-blue-800">
-                        <Edit2 />
-                      </button>
-                    </td>
-                    <td className="px-4 py-2 border">
-                      <button onClick={() => handleDeleteGroup(entry.order_id)} className="text-red-600 hover:text-red-800">
-                        <Trash2 />
-                      </button>
-                    </td>
-                    <td className="px-4 py-2 border" />
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+
+                          {isFirst && (
+                            <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                              <button
+                                onClick={() => handleDeleteGroup(entry.order_id)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Delete entire entry"
+                              >
+                                <Trash2 />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    // fallback (shouldn't normally happen)
+                    <tr key={`${entry.order_id}-empty`}>
+                      <td className="px-4 py-2 border">{entry.material_grade}</td>
+                      <td className="px-4 py-2 border">{entry.invoice_number}</td>
+                      <td className="px-4 py-2 border">{entry.invoice_date?.split("T")[0] || ""}</td>
+                      <td className="px-4 py-2 border" colSpan={3}>
+                        No colors
+                      </td>
+                      <td className="px-4 py-2 border">{formatNumber(entry.total_kgs)}</td>
+                      <td className="px-4 py-2 border">₹ {formatNumber(entry.total_amount)}</td>
+                      <td className="px-4 py-2 border">
+                        <button onClick={() => handleEdit(entry)} className="text-blue-600 hover:text-blue-800">
+                          <Edit2 />
+                        </button>
+                      </td>
+                      <td className="px-4 py-2 border">
+                        <button onClick={() => handleDeleteGroup(entry.order_id)} className="text-red-600 hover:text-red-800">
+                          <Trash2 />
+                        </button>
+                      </td>
+                      <td className="px-4 py-2 border" />
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
