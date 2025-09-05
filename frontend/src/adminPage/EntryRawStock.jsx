@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Trash2, Edit2, X, LoaderCircle, Plus, Settings } from "lucide-react";
+import { Trash2, Edit2, X, LoaderCircle, Plus, Settings, AlertTriangle } from "lucide-react";
 import Title from "../components/Title";
 
 const BASE_URL = import.meta.env.VITE_APP_BACKEND_URL;
@@ -19,16 +19,25 @@ const getToken = () => {
 const EntryRawStock = () => {
   const [formVisible, setFormVisible] = useState(false);
   const [colorManagerVisible, setColorManagerVisible] = useState(false);
+  const [materialManagerVisible, setMaterialManagerVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [loadingColors, setLoadingColors] = useState(true);
+  const [loadingMaterials, setLoadingMaterials] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showCustomColorInput, setShowCustomColorInput] = useState(false);
   const [customColorName, setCustomColorName] = useState("");
+  const [showCustomMaterialInput, setShowCustomMaterialInput] = useState(false);
+  const [customMaterialName, setCustomMaterialName] = useState("");
+  const [customMaterialCode, setCustomMaterialCode] = useState("");
+  const [editingMaterial, setEditingMaterial] = useState(null);
+  const [editMaterialName, setEditMaterialName] = useState("");
+  const [editMaterialCode, setEditMaterialCode] = useState("");
 
   const [formData, setFormData] = useState({
-    material_grade: "",
+    material_name: "",
+    material_code: "",
     colors: [],                   // array of { color_id, color_name, is_custom? }
     kgPerColor: {},               // { [color_id]: string (empty or numeric string) }
     ratePerKg: {},                // { [color_id]: string }
@@ -38,7 +47,7 @@ const EntryRawStock = () => {
   });
 
   const [entries, setEntries] = useState([]);
-  const [materialOptions] = useState(["Octen-123", "Flexitub-789", "Other-001"]);
+  const [materialOptions, setMaterialOptions] = useState([]);
   const [colorOptions, setColorOptions] = useState([]);
 
   // formating numbers with Indian commas & returns empty string for blank inputs.
@@ -58,9 +67,26 @@ const EntryRawStock = () => {
       setColorOptions(res.data || []);
     } catch (err) {
       console.error("Fetch Colors Error:", err.message);
-      toast.error("Failed to fetch colors!");
+      toast.error("Failed to fetch colors!", { autoClose: 4000 });
     } finally {
       setLoadingColors(false);
+    }
+  };
+
+  // fetch material options from backend
+  const fetchMaterials = async () => {
+    try {
+      setLoadingMaterials(true);
+      const token = getToken();
+      const res = await axios.get(`${BASE_URL}/api/materials`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      setMaterialOptions(res.data || []);
+    } catch (err) {
+      console.error("Fetch Materials Error:", err.message);
+      toast.error("Failed to fetch materials!", { autoClose: 4000 });
+    } finally {
+      setLoadingMaterials(false);
     }
   };
 
@@ -75,7 +101,7 @@ const EntryRawStock = () => {
       setEntries(res.data || []);
     } catch (err) {
       console.error("Fetch Entries Error:", err.message);
-      toast.error("Failed to fetch raw stock entries!");
+      toast.error("Failed to fetch raw stock entries!", { autoClose: 4000 });
     } finally {
       setLoadingEntries(false);
     }
@@ -83,6 +109,7 @@ const EntryRawStock = () => {
 
   useEffect(() => {
     fetchColors();
+    fetchMaterials();
     fetchEntries();
   }, []);
 
@@ -91,10 +118,95 @@ const EntryRawStock = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Add a custom material
+  const handleAddCustomMaterial = async () => {
+    if (!customMaterialName.trim()) {
+      toast.error("Please enter a material name", { autoClose: 4000 });
+      return;
+    }
+    if (!customMaterialCode.trim()) {
+      toast.error("Please enter a material code", { autoClose: 4000 });
+      return;
+    }
+
+    try {
+      const token = getToken();
+      const response = await axios.post(`${BASE_URL}/api/materials`, {
+        material_name: customMaterialName.trim(),
+        material_code: customMaterialCode.trim()
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (response.status === 201) {
+        toast.success("Material added successfully!", { autoClose: 4000 });
+        setCustomMaterialName("");
+        setCustomMaterialCode("");
+        setShowCustomMaterialInput(false);
+        fetchMaterials();
+        
+        // Set the form to use the new material
+        setFormData(prev => ({
+          ...prev,
+          material_name: response.data.material_name,
+          material_code: response.data.material_code
+        }));
+      }
+    } catch (err) {
+      console.error("Add Material Error:", err.message);
+      if (err.response?.status === 400) {
+        toast.error(err.response.data.message, { autoClose: 4000 });
+      } else {
+        toast.error("Error adding material!", { autoClose: 4000 });
+      }
+    }
+  };
+
+  // Update a material
+  const handleUpdateMaterial = async (materialId, newName, newCode) => {
+    if (!newName.trim() || !newCode.trim()) {
+      toast.error("Please enter both material name and code", { autoClose: 4000 });
+      return;
+    }
+
+    try {
+      const token = getToken();
+      const response = await axios.put(`${BASE_URL}/api/materials/${materialId}`, {
+        material_name: newName.trim(),
+        material_code: newCode.trim()
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      if (response.status === 200) {
+        toast.success("Material updated successfully!", { autoClose: 4000 });
+        setEditingMaterial(null);
+        fetchMaterials();
+        
+        // Update the form if the edited material is currently selected
+        if (formData.material_name === response.data.material_name && 
+            formData.material_code === response.data.material_code) {
+          setFormData(prev => ({
+            ...prev,
+            material_name: response.data.material_name,
+            material_code: response.data.material_code
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Update Material Error:", err.message);
+      if (err.response?.status === 400) {
+        toast.error(err.response.data.message, { autoClose: 4000 });
+      } else {
+        toast.error("Error updating material!", { autoClose: 4000 });
+      }
+    }
+  };
+
   // Add a custom color
   const handleAddCustomColor = () => {
     if (!customColorName.trim()) {
-      toast.error("Please enter a color name");
+      toast.error("Please enter a color name", { autoClose: 4000 });
       return;
     }
     
@@ -105,7 +217,7 @@ const EntryRawStock = () => {
     );
     
     if (exists) {
-      toast.error("This color has already been added");
+      toast.error("This color has already been added", { autoClose: 4000 });
       return;
     }
     
@@ -134,7 +246,7 @@ const EntryRawStock = () => {
     const colorObj = colorOptions.find((c) => String(c.color_id) === String(colorId));
     if (!colorObj) return;
     if (formData.colors.some((c) => String(c.color_id) === String(colorObj.color_id))) {
-      toast.error("This color has already been added");
+      toast.error("This color has already been added", { autoClose: 4000 });
       return;
     }
 
@@ -179,7 +291,7 @@ const EntryRawStock = () => {
       });
       
       if (response.status === 200) {
-        toast.success(`Color "${color_name}" deleted successfully`);
+        toast.success(`Color "${color_name}" deleted successfully`, { autoClose: 4000 });
         // Remove from form
         handleRemoveColor(color_id);
         // Refresh color options
@@ -188,60 +300,125 @@ const EntryRawStock = () => {
     } catch (err) {
       console.error("Delete Custom Color Error:", err.message);
       if (err.response?.status === 404) {
-        toast.error("Color not found or already deleted");
+        toast.error("Color not found or already deleted", { autoClose: 4000 });
       } else if (err.response?.status === 400) {
-        toast.error(err.response.data.message);
+        toast.error(err.response.data.message, { autoClose: 4000 });
       } else {
-        toast.error("Error deleting custom color!");
+        toast.error("Error deleting custom color!", { autoClose: 4000 });
       }
     }
   };
 
-  // Delete a custom color from the color options list
-  const handleDeleteColorOption = async (color_id, color_name) => {
-    const confirmToast = ({ closeToast }) => (
-      <div>
-        <p>Are you sure you want to delete the color "{color_name}"?</p>
-        <div className="flex justify-end mt-2 gap-2">
-          <button
-            className="bg-red-600 text-white px-2 py-1 rounded"
-            onClick={async () => {
-              try {
-                const token = getToken();
-                const response = await axios.delete(`${BASE_URL}/api/colors/${color_id}`, {
-                  headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                });
-                
-                if (response.status === 200) {
-                  toast.dismiss();
-                  toast.success(`Color "${color_name}" deleted successfully`);
-                  fetchColors();
-                }
-              } catch (err) {
-                console.error("Delete Color Option Error:", err.message);
-                toast.dismiss();
-                if (err.response?.status === 404) {
-                  toast.error("Color not found or already deleted");
-                } else if (err.response?.status === 400) {
-                  toast.error(err.response.data.message);
-                } else {
-                  toast.error("Error deleting color!");
-                }
-              }
-            }}
-          >
-            Yes
-          </button>
-          <button
-            className="bg-gray-300 px-2 py-1 rounded"
-            onClick={() => toast.dismiss()}
-          >
-            No
-          </button>
-        </div>
-      </div>
+  // Delete a material from the material options list
+  const handleDeleteMaterialOption = async (material_id, material_name) => {
+    // Check if this material is used in any entries
+    const materialUsedInEntries = entries.some(entry => 
+      entry.material_name === material_name
     );
-    toast.info(confirmToast, { autoClose: false });
+    
+    if (materialUsedInEntries) {
+      // Show confirmation with warning about associated entries
+      const confirmToast = ({ closeToast }) => (
+        <div>
+          <p className="font-semibold">This material is used in existing entries</p>
+          <p className="text-sm text-red-600 mt-1">Deleting it will also delete all associated entries!</p>
+          <p className="text-sm mt-2">Are you sure you want to proceed?</p>
+          <div className="flex justify-end mt-3 gap-2">
+            <button className="bg-red-600 text-white px-3 py-1 rounded text-sm"
+              onClick={async () => {
+                try {
+                  const token = getToken();
+                  // First delete all entries that use this material
+                  const entriesToDelete = entries.filter(entry => 
+                    entry.material_name === material_name
+                  );
+                  
+                  // Delete each entry that uses this material
+                  for (const entry of entriesToDelete) {
+                    await axios.delete(`${BASE_URL}/api/raw-stock/${entry.order_id}`, {
+                      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                    });
+                  }
+                  
+                  // Then delete the material itself
+                  const response = await axios.delete(`${BASE_URL}/api/materials/${material_id}`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                  });
+                  
+                  if (response.status === 200) {
+                    toast.dismiss();
+                    toast.success(`Material "${material_name}" and all associated entries deleted successfully!`, { autoClose: 5000 });
+                    fetchMaterials();
+                    fetchEntries(); // Refresh entries to reflect deletions
+                  }
+                } catch (err) {
+                  console.error("Delete Material Option Error:", err.message);
+                  toast.dismiss();
+                  if (err.response?.status === 404) {
+                    toast.error("Material not found or already deleted", { autoClose: 4000 });
+                  } else if (err.response?.status === 400) {
+                    toast.error(err.response.data.message, { autoClose: 4000 });
+                  } else {
+                    toast.error("Error deleting material!", { autoClose: 4000 });
+                  }
+                }
+              }}
+            >
+              Yes, Delete All
+            </button>
+            <button className="bg-gray-300 px-3 py-1 rounded text-sm" onClick={() => toast.dismiss()}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+      toast.info(confirmToast, { autoClose: false });
+    } else {
+      // No associated entries, use simpler confirmation
+      const confirmToast = ({ closeToast }) => (
+        <div>
+          <p>Are you sure you want to delete the material "{material_name}"?</p>
+          <div className="flex justify-end mt-2 gap-2">
+            <button
+              className="bg-red-600 text-white px-2 py-1 rounded"
+              onClick={async () => {
+                try {
+                  const token = getToken();
+                  const response = await axios.delete(`${BASE_URL}/api/materials/${material_id}`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+                  });
+                  
+                  if (response.status === 200) {
+                    toast.dismiss();
+                    toast.success(`Material "${material_name}" deleted successfully`, { autoClose: 4000 });
+                    fetchMaterials();
+                  }
+                } catch (err) {
+                  console.error("Delete Material Option Error:", err.message);
+                  toast.dismiss();
+                  if (err.response?.status === 404) {
+                    toast.error("Material not found or already deleted", { autoClose: 4000 });
+                  } else if (err.response?.status === 400) {
+                    toast.error(err.response.data.message, { autoClose: 4000 });
+                  } else {
+                    toast.error("Error deleting material!", { autoClose: 4000 });
+                  }
+                }
+              }}
+            >
+              Yes
+            </button>
+            <button
+              className="bg-gray-300 px-2 py-1 rounded"
+              onClick={() => toast.dismiss()}
+            >
+              No
+            </button>
+          </div>
+        </div>
+      );
+      toast.info(confirmToast, { autoClose: false });
+    }
   };
 
   const handleKgChange = (color_id, value) => {
@@ -275,30 +452,31 @@ const EntryRawStock = () => {
     setSubmitting(true);
 
     // basic validation
-    if (!formData.material_grade) {
-      toast.error("Select material grade");
+    if (!formData.material_name || !formData.material_code) {
+      toast.error("Select or create a material", { autoClose: 4000 });
       setSubmitting(false);
       return;
     }
     if (!formData.invoice_number) {
-      toast.error("Enter invoice number");
+      toast.error("Enter invoice number", { autoClose: 4000 });
       setSubmitting(false);
       return;
     }
     if (!formData.invoice_date) {
-      toast.error("Select invoice date");
+      toast.error("Select invoice date", { autoClose: 4000 });
       setSubmitting(false);
       return;
     }
     if (!formData.colors || formData.colors.length === 0) {
-      toast.error("Select at least one color");
+      toast.error("Select at least one color", { autoClose: 4000 });
       setSubmitting(false);
       return;
     }
 
     // prepare payload
     const payload = {
-      material_grade: formData.material_grade,
+      material_name: formData.material_name,
+      material_code: formData.material_code,
       colors: formData.colors.map((c) => ({
         color_id: c.is_custom ? null : c.color_id, // For custom colors, send null
         color_name: c.color_name, // For custom colors, send the name
@@ -317,17 +495,18 @@ const EntryRawStock = () => {
         await axios.put(`${BASE_URL}/api/raw-stock/${editingId}`, payload, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
-        toast.success("Raw stock updated successfully!");
+        toast.success("Raw stock updated successfully!", { autoClose: 4000 });
       } else {
         await axios.post(`${BASE_URL}/api/raw-stock`, payload, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
-        toast.success("Raw stock added successfully!");
+        toast.success("Raw stock added successfully!", { autoClose: 4000 });
       }
 
       // reset
       setFormData({
-        material_grade: "",
+        material_name: "",
+        material_code: "",
         colors: [],
         kgPerColor: {},
         ratePerKg: {},
@@ -341,7 +520,7 @@ const EntryRawStock = () => {
       fetchColors(); // Refresh colors in case new custom colors were added
     } catch (err) {
       console.error("Submit Error:", err.response?.data || err.message);
-      toast.error("Error submitting entry!");
+      toast.error("Error submitting entry!", { autoClose: 4000 });
     } finally {
       setSubmitting(false);
     }
@@ -351,7 +530,7 @@ const EntryRawStock = () => {
   const handleEdit = (entry) => {
     setFormVisible(true);
     setEditingId(entry.order_id);
-    toast.info("Editing mode enabled");
+    toast.info("Editing mode enabled", { autoClose: 4000 });
 
     // Map details to color objects
     const colors = (entry.details || []).map((d) => {
@@ -373,7 +552,8 @@ const EntryRawStock = () => {
     });
 
     setFormData({
-      material_grade: entry.material_grade || "",
+      material_name: entry.material_name || "",
+      material_code: entry.material_code || "",
       colors,
       kgPerColor,
       ratePerKg,
@@ -400,10 +580,10 @@ const EntryRawStock = () => {
                 });
                 fetchEntries();
                 toast.dismiss();
-                toast.success("Raw stock deleted successfully!");
+                toast.success("Raw stock deleted successfully!", { autoClose: 4000 });
               } catch (err) {
                 console.error("Delete Error:", err.response?.data || err.message);
-                toast.error("Error deleting entry!");
+                toast.error("Error deleting entry!", { autoClose: 4000 });
               } finally {
                 setLoading(false);
               }
@@ -423,11 +603,12 @@ const EntryRawStock = () => {
     toast.info(confirmToast, { autoClose: false });
   };
 
-  // Delete a single color row (detail)
+  // Delete a single color row (detail) - only from this specific entry
   const handleDeleteColor = (order_id, detail_id) => {
     const confirmToast = ({ closeToast }) => (
       <div>
-        <p>Are you sure you want to delete this color?</p>
+        <p>Are you sure you want to delete this color from this entry?</p>
+        <p className="text-sm text-gray-600 mt-1">This will only remove the color from this specific entry, not from other materials.</p>
         <div className="flex justify-end mt-2 gap-2">
           <button
             className="bg-red-600 text-white px-2 py-1 rounded"
@@ -440,11 +621,11 @@ const EntryRawStock = () => {
                 });
                 fetchEntries();
                 toast.dismiss();
-                toast.success("Color deleted successfully!");
+                toast.success("Color removed from this entry successfully!", { autoClose: 4000 });
               } catch (err) {
                 console.error("Delete Color Error:", err.response?.data || err.message);
-                if (err.response?.status === 404) toast.error("Color not found or already deleted");
-                else toast.error("Error deleting color!");
+                if (err.response?.status === 404) toast.error("Color not found or already deleted", { autoClose: 4000 });
+                else toast.error("Error deleting color!", { autoClose: 4000 });
               } finally {
                 setLoading(false);
               }
@@ -469,7 +650,7 @@ const EntryRawStock = () => {
       <div className="text-2xl text-center pt-8 border-t">
         <Title text1={"ENTRY"} text2={"RAW STOCK"} />
       </div>
-      <ToastContainer />
+      <ToastContainer position="top-right" autoClose={4000} />
 
       <div className="flex justify-end my-4 gap-2">
         <button
@@ -480,12 +661,20 @@ const EntryRawStock = () => {
           Manage Colors
         </button>
         <button
+          onClick={() => setMaterialManagerVisible(true)}
+          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 flex items-center gap-2"
+        >
+          <Settings size={18} />
+          Manage Materials
+        </button>
+        <button
           onClick={() => {
             setFormVisible(true);
             setEditingId(null);
             // reset form for new entry
             setFormData({
-              material_grade: "",
+              material_name: "",
+              material_code: "",
               colors: [],
               kgPerColor: {},
               ratePerKg: {},
@@ -544,7 +733,7 @@ const EntryRawStock = () => {
                         <div key={color.color_id} className="flex justify-between items-center py-1 border-b last:border-b-0">
                           <span>{color.color_name}</span>
                           <button
-                            onClick={() => handleDeleteColorOption(color.color_id, color.color_name)}
+                            onClick={() => handleRemoveCustomColor(color.color_id, color.color_name)}
                             className="text-red-600 hover:text-red-800"
                             title="Delete this color from the system"
                           >
@@ -559,6 +748,138 @@ const EntryRawStock = () => {
               <div className="mt-6">
                 <button
                   onClick={() => setColorManagerVisible(false)}
+                  className="w-full bg-gray-600 text-white py-2 rounded font-semibold hover:bg-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Material Manager Modal */}
+      {materialManagerVisible && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex justify-center items-center z-50 p-4">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-md relative shadow-lg max-h-[90vh] overflow-hidden flex flex-col">
+            <X
+              size={28}
+              className="absolute top-3 right-3 text-red-600 cursor-pointer hover:text-red-800 z-10"
+              onClick={() => setMaterialManagerVisible(false)}
+            />
+            <h2 className="text-2xl font-bold mb-6 text-center">
+              Manage Materials
+            </h2>
+
+            <div className="overflow-y-auto flex-grow pr-2 -mr-2">
+              <div className="mb-4">
+                <h3 className="font-semibold mb-2">Available Materials</h3>
+                <div className="border rounded p-2">
+                  {materialOptions.length === 0 ? (
+                    <p className="text-gray-500">No materials found</p>
+                  ) : (
+                    materialOptions.map(material => (
+                      <div key={material.material_id} className="py-2 border-b last:border-b-0">
+                        {editingMaterial === material.material_id ? (
+                          <div className="flex flex-col gap-2">
+                            <input
+                              type="text"
+                              value={editMaterialName}
+                              onChange={(e) => setEditMaterialName(e.target.value)}
+                              className="border p-2 rounded"
+                              placeholder="Material Name"
+                            />
+                            <input
+                              type="text"
+                              value={editMaterialCode}
+                              onChange={(e) => setEditMaterialCode(e.target.value)}
+                              className="border p-2 rounded"
+                              placeholder="Material Code"
+                            />
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={() => handleUpdateMaterial(material.material_id, editMaterialName, editMaterialCode)}
+                                className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingMaterial(null)}
+                                className="bg-gray-300 px-3 py-1 rounded text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <div className="font-medium">{material.material_name}</div>
+                              <div className="text-sm text-gray-500">Code: {material.material_code}</div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingMaterial(material.material_id);
+                                  setEditMaterialName(material.material_name);
+                                  setEditMaterialCode(material.material_code);
+                                }}
+                                className="text-blue-600 hover:text-blue-800"
+                                title="Edit this material"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMaterialOption(material.material_id, material.material_name)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Delete this material"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <h3 className="font-semibold mb-2">Add New Material</h3>
+                <div className="border rounded p-3">
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium mb-1">Material Name</label>
+                    <input
+                      type="text"
+                      value={customMaterialName}
+                      onChange={(e) => setCustomMaterialName(e.target.value)}
+                      placeholder="Enter material name"
+                      className="border p-2 rounded w-full"
+                    />
+                  </div>
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium mb-1">Material Code</label>
+                    <input
+                      type="text"
+                      value={customMaterialCode}
+                      onChange={(e) => setCustomMaterialCode(e.target.value)}
+                      placeholder="Enter material code (numbers, letters, symbols)"
+                      className="border p-2 rounded w-full"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddCustomMaterial}
+                    className="bg-blue-600 text-white px-3 py-2 rounded w-full"
+                  >
+                    Add Material
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => setMaterialManagerVisible(false)}
                   className="w-full bg-gray-600 text-white py-2 rounded font-semibold hover:bg-gray-700"
                 >
                   Close
@@ -587,23 +908,71 @@ const EntryRawStock = () => {
 
             <div className="overflow-y-auto flex-grow pr-2 -mr-2">
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Material Grade */}
+                {/* Material Selection */}
                 <div>
-                  <label className="block font-semibold mb-1">Material Grade</label>
+                  <label className="block font-semibold mb-1">Material</label>
                   <select
-                    name="material_grade"
-                    value={formData.material_grade}
-                    onChange={handleChange}
+                    value={formData.material_name ? `${formData.material_name}|${formData.material_code}` : ""}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const [name, code] = e.target.value.split('|');
+                        setFormData(prev => ({
+                          ...prev,
+                          material_name: name,
+                          material_code: code
+                        }));
+                      }
+                    }}
                     className="border p-2 rounded w-full"
                     required
                   >
                     <option value="">Select Material</option>
-                    {materialOptions.map((mat) => (
-                      <option key={mat} value={mat}>
-                        {mat}
+                    {materialOptions.map((material) => (
+                      <option key={material.material_id} value={`${material.material_name}|${material.material_code}`}>
+                        {material.material_name} ({material.material_code})
                       </option>
                     ))}
                   </select>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomMaterialInput(!showCustomMaterialInput)}
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm mt-1"
+                  >
+                    <Plus size={16} /> {showCustomMaterialInput ? "Cancel" : "Add New Material"}
+                  </button>
+                  
+                  {showCustomMaterialInput && (
+                    <div className="mt-2 p-3 border rounded bg-gray-50">
+                      <div className="mb-2">
+                        <label className="block text-sm font-medium mb-1">Material Name</label>
+                        <input
+                          type="text"
+                          value={customMaterialName}
+                          onChange={(e) => setCustomMaterialName(e.target.value)}
+                          placeholder="Enter material name"
+                          className="border p-2 rounded w-full"
+                        />
+                      </div>
+                      <div className="mb-2">
+                        <label className="block text-sm font-medium mb-1">Material Code</label>
+                        <input
+                          type="text"
+                          value={customMaterialCode}
+                          onChange={(e) => setCustomMaterialCode(e.target.value)}
+                          placeholder="Enter material code (numbers, letters, symbols)"
+                          className="border p-2 rounded w-full"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddCustomMaterial}
+                        className="bg-blue-600 text-white px-3 py-2 rounded w-full"
+                      >
+                        Add Material
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Select / Add Color */}
@@ -829,7 +1198,8 @@ const EntryRawStock = () => {
           <table className="min-w-full border border-gray-300">
             <thead>
               <tr className="bg-gray-100 text-center">
-                <th className="px-4 py-2 border">Material Grade</th>
+                <th className="px-4 py-2 border">Material Name</th>
+                <th className="px-4 py-2 border">Material Code</th>
                 <th className="px-4 py-2 border">Invoice Number</th>
                 <th className="px-4 py-2 border">Invoice Date</th>
                 <th className="px-4 py-2 border">Color</th>
@@ -846,7 +1216,7 @@ const EntryRawStock = () => {
             <tbody className="text-center">
               {entries.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-4">
+                  <td colSpan={13} className="py-4">
                     No entries yet
                   </td>
                 </tr>
@@ -863,7 +1233,12 @@ const EntryRawStock = () => {
                         <tr key={`${entry.order_id}-${d.detail_id ?? idx}`}>
                           {isFirst && (
                             <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
-                              {entry.material_grade}
+                              {entry.material_name}
+                            </td>
+                          )}
+                          {isFirst && (
+                            <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
+                              {entry.material_code}
                             </td>
                           )}
                           {isFirst && (
@@ -911,7 +1286,7 @@ const EntryRawStock = () => {
                             <button
                               onClick={() => handleDeleteColor(entry.order_id, d.detail_id)}
                               className="text-red-600 hover:text-red-800"
-                              title="Delete this color"
+                              title="Delete this color from this entry"
                             >
                               <Trash2 />
                             </button>
@@ -934,7 +1309,8 @@ const EntryRawStock = () => {
                   ) : (
                     // fallback (shouldn't normally happen)
                     <tr key={`${entry.order_id}-empty`}>
-                      <td className="px-4 py-2 border">{entry.material_grade}</td>
+                      <td className="px-4 py-2 border">{entry.material_name}</td>
+                      <td className="px-4 py-2 border">{entry.material_code}</td>
                       <td className="px-4 py-2 border">{entry.invoice_number}</td>
                       <td className="px-4 py-2 border">{entry.invoice_date?.split("T")[0] || ""}</td>
                       <td className="px-4 py-2 border" colSpan={3}>

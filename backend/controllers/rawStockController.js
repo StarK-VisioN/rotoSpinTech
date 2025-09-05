@@ -2,11 +2,14 @@ const pool = require("../config/db");
 
 // @desc Add new raw stock entry
 // @route POST /api/raw-stock
+// In createRawStock function, add material_id linking
 const createRawStock = async (req, res) => {
   try {
-    const { material_grade, invoice_number, invoice_date, colors, remarks } = req.body;
+    const { material_name, material_code, invoice_number, invoice_date, colors, remarks } = req.body;
 
-    if (!material_grade || !invoice_number || !invoice_date || !colors || colors.length === 0) {
+    console.log("Received data:", req.body);
+
+    if (!material_name || !material_code || !invoice_number || !invoice_date || !colors || colors.length === 0) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -14,15 +17,15 @@ const createRawStock = async (req, res) => {
     let total_kgs = 0;
     let total_amount = 0;
     colors.forEach(c => {
-      total_kgs += parseFloat(c.kgs);
-      total_amount += parseFloat(c.kgs) * parseFloat(c.rate_per_kg);
+      total_kgs += parseFloat(c.kgs || 0);
+      total_amount += parseFloat(c.kgs || 0) * parseFloat(c.rate_per_kg || 0);
     });
 
     // insert main stock entry
     const stockResult = await pool.query(
-      `INSERT INTO entry_raw_stock (material_grade, total_kgs, total_amount, invoice_number, invoice_date, remarks)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING order_id`,
-      [material_grade, total_kgs, total_amount, invoice_number, invoice_date, remarks || null]
+      `INSERT INTO entry_raw_stock (material_name, material_code, total_kgs, total_amount, invoice_number, invoice_date, remarks)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING order_id`,
+      [material_name, material_code, total_kgs, total_amount, invoice_number, invoice_date, remarks || null]
     );
 
     const order_id = stockResult.rows[0].order_id;
@@ -33,18 +36,35 @@ const createRawStock = async (req, res) => {
       let color_id = c.color_id;
       
       if (c.is_custom && c.color_name) {
-        // Insert custom color and get its ID
-        const colorResult = await pool.query(
-          `INSERT INTO colors (color_name, is_custom) VALUES ($1, TRUE) RETURNING color_id`,
-          [c.color_name]
-        );
-        color_id = colorResult.rows[0].color_id;
+        try {
+          // Insert custom color and get its ID
+          const colorResult = await pool.query(
+            `INSERT INTO colors (color_name, is_custom) VALUES ($1, TRUE) RETURNING color_id`,
+            [c.color_name]
+          );
+          color_id = colorResult.rows[0].color_id;
+        } catch (colorError) {
+          // If color already exists, try to find it
+          if (colorError.code === '23505') { // unique violation
+            const existingColor = await pool.query(
+              `SELECT color_id FROM colors WHERE color_name = $1`,
+              [c.color_name]
+            );
+            if (existingColor.rows.length > 0) {
+              color_id = existingColor.rows[0].color_id;
+            } else {
+              throw colorError;
+            }
+          } else {
+            throw colorError;
+          }
+        }
       }
 
       await pool.query(
-        `INSERT INTO entry_raw_stock_details (order_id, color_id, kgs, rate_per_kg)
-         VALUES ($1, $2, $3, $4)`,
-        [order_id, color_id, c.kgs, c.rate_per_kg]
+        `INSERT INTO entry_raw_stock_details (order_id, color_id, kgs, rate_per_kg, material_name)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [order_id, color_id, c.kgs, c.rate_per_kg, material_name]
       );
     }
 
@@ -67,16 +87,19 @@ const getRawStocks = async (req, res) => {
 
     for (const stock of stockResult.rows) {
       const detailsResult = await pool.query(
-        `SELECT d.detail_id, d.kgs, d.rate_per_kg, d.total_price, 
+        `SELECT d.detail_id, d.kgs, d.rate_per_kg, 
                 COALESCE(c.color_name, 'Unknown') AS color,
-                c.color_id
+                c.color_id, d.material_name
          FROM entry_raw_stock_details d
          LEFT JOIN colors c ON d.color_id = c.color_id
          WHERE d.order_id = $1`,
         [stock.order_id]
       );
 
-      stocks.push({ ...stock, details: detailsResult.rows });
+      stocks.push({ 
+        ...stock, 
+        details: detailsResult.rows 
+      });
     }
 
     res.json(stocks);
@@ -91,24 +114,24 @@ const getRawStocks = async (req, res) => {
 const updateRawStock = async (req, res) => {
   try {
     const { id } = req.params;
-    const { material_grade, invoice_number, invoice_date, colors, remarks } = req.body;
+    const { material_name, material_code, invoice_number, invoice_date, colors, remarks } = req.body;
 
-    if (!material_grade || !invoice_number || !invoice_date || !colors || colors.length === 0) {
+    if (!material_name || !material_code || !invoice_number || !invoice_date || !colors || colors.length === 0) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     let total_kgs = 0;
     let total_amount = 0;
     colors.forEach(c => {
-      total_kgs += parseFloat(c.kgs);
-      total_amount += parseFloat(c.kgs) * parseFloat(c.rate_per_kg);
+      total_kgs += parseFloat(c.kgs || 0);
+      total_amount += parseFloat(c.kgs || 0) * parseFloat(c.rate_per_kg || 0);
     });
 
     await pool.query(
       `UPDATE entry_raw_stock
-       SET material_grade=$1, total_kgs=$2, total_amount=$3, invoice_number=$4, invoice_date=$5, remarks=$6
-       WHERE order_id=$7`,
-      [material_grade, total_kgs, total_amount, invoice_number, invoice_date, remarks || null, id]
+       SET material_name=$1, material_code=$2, total_kgs=$3, total_amount=$4, invoice_number=$5, invoice_date=$6, remarks=$7
+       WHERE order_id=$8`,
+      [material_name, material_code, total_kgs, total_amount, invoice_number, invoice_date, remarks || null, id]
     );
 
     // remove previous details
@@ -139,9 +162,9 @@ const updateRawStock = async (req, res) => {
       }
 
       await pool.query(
-        `INSERT INTO entry_raw_stock_details (order_id, color_id, kgs, rate_per_kg)
-         VALUES ($1, $2, $3, $4)`,
-        [id, color_id, c.kgs, c.rate_per_kg]
+        `INSERT INTO entry_raw_stock_details (order_id, color_id, kgs, rate_per_kg, material_name)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, color_id, c.kgs, c.rate_per_kg, material_name]
       );
     }
 
@@ -174,7 +197,6 @@ const deleteRawStock = async (req, res) => {
   }
 };
 
-
 // DELETE specific color (detail)
 // @route DELETE /api/raw-stock/:orderId/color/:detailId
 const deleteColorFromRawStock = async (req, res) => {
@@ -195,7 +217,7 @@ const deleteColorFromRawStock = async (req, res) => {
     const totals = await pool.query(
       `SELECT 
          COALESCE(SUM(kgs), 0) AS total_kgs,
-         COALESCE(SUM(total_price), 0) AS total_amount
+         COALESCE(SUM(kgs * rate_per_kg), 0) AS total_amount
        FROM entry_raw_stock_details
        WHERE order_id=$1`,
       [orderId]
@@ -215,10 +237,87 @@ const deleteColorFromRawStock = async (req, res) => {
   }
 };
 
+// @desc Get available material names
+// @route GET /api/raw-stock/material-names
+const getMaterialNames = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT DISTINCT material_name FROM entry_raw_stock ORDER BY material_name`
+    );
+    
+    res.json(result.rows.map(row => row.material_name));
+  } catch (err) {
+    console.error("Get Material Names Error:", err.message);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// @desc Get colors by material name
+// @route GET /api/raw-stock/material/:materialName/colors
+const getColorsByMaterial = async (req, res) => {
+  try {
+    const { materialName } = req.params;
+
+    const colorsResult = await pool.query(
+      `SELECT DISTINCT c.color_id, c.color_name, c.is_custom
+       FROM entry_raw_stock_details d
+       JOIN colors c ON d.color_id = c.color_id
+       WHERE d.material_name = $1
+       ORDER BY c.color_name`,
+      [materialName]
+    );
+
+    res.json(colorsResult.rows);
+  } catch (err) {
+    console.error("Get Colors By Material Error:", err.message);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// @desc Delete colors by material name
+// @route DELETE /api/raw-stock/material/:materialName/colors
+const deleteColorsByMaterial = async (req, res) => {
+  try {
+    const { materialName } = req.params;
+
+    // First, get all color IDs used by this material
+    const colorsResult = await pool.query(
+      `SELECT DISTINCT color_id FROM entry_raw_stock_details WHERE material_name = $1`,
+      [materialName]
+    );
+
+    const colorIds = colorsResult.rows.map(row => row.color_id);
+
+    if (colorIds.length === 0) {
+      return res.status(404).json({ message: "No colors found for this material" });
+    }
+
+    // Delete the color entries from details table
+    await pool.query(
+      `DELETE FROM entry_raw_stock_details WHERE material_name = $1`,
+      [materialName]
+    );
+
+    // Delete the colors themselves (only custom colors)
+    await pool.query(
+      `DELETE FROM colors WHERE color_id = ANY($1) AND is_custom = TRUE`,
+      [colorIds]
+    );
+
+    res.json({ message: `Colors for material ${materialName} deleted successfully` });
+  } catch (err) {
+    console.error("Delete Colors By Material Error:", err.message);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 module.exports = {
   createRawStock,
   getRawStocks,
   updateRawStock,
   deleteRawStock,
   deleteColorFromRawStock,
+  getMaterialNames,
+  getColorsByMaterial,
+  deleteColorsByMaterial
 };

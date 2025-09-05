@@ -5,6 +5,9 @@ const {
   updateRawStock,
   deleteRawStock,
   deleteColorFromRawStock,
+  getColorsByMaterial,
+  deleteColorsByMaterial,
+  getMaterialNames,
 } = require("../controllers/rawStockController");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -24,5 +27,10 @@ router.delete("/:id", protect, deleteRawStock);
 
 // new route for deleting specific color detail
 router.delete("/:orderId/color/:detailId", deleteColorFromRawStock);
+
+// Add these new routes
+router.get("/material-names", protect, getMaterialNames);
+router.get("/material/:materialName/colors", protect, getColorsByMaterial);
+router.delete("/material/:materialName/colors", protect, deleteColorsByMaterial);
 
 module.exports = router;

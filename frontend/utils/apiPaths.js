@@ -24,6 +24,17 @@ export const API_PATHS = {
     PUT: (sap_name) => `/api/sap-products/${sap_name}`,
     DELETE: (sap_name) => `/api/sap-products/${sap_name}`,
   },
+  COLORS: {
+    GET: "/api/colors",
+    POST: "/api/colors",
+    DELETE: (id) => `/api/colors/${id}`,
+  },
+  MATERIALS: {
+    GET: "/api/materials",
+    POST: "/api/materials",
+    PUT: (id) => `/api/materials/${id}`,
+    DELETE: (id) => `/api/materials/${id}`,
+  },
   PREDICTION: {
     SALES: '/api/prediction/sales',
     INVENTORY: '/api/prediction/inventory',

@@ -132,7 +132,7 @@ const EntryProduct = () => {
       setEntries(res.data);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch entry products!");
+      toast.error("Failed to fetch entry products!", { autoClose: 4000 });
     } finally {
       setLoadingEntries(false);
     }
@@ -145,7 +145,7 @@ const EntryProduct = () => {
       setSapProducts(res.data);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch SAP products!");
+      toast.error("Failed to fetch SAP products!", { autoClose: 4000 });
     } finally {
       setLoadingSapProducts(false);
     }
@@ -213,7 +213,7 @@ const EntryProduct = () => {
         color: finalColor
       });
       
-      toast.success("New SAP product added successfully!");
+      toast.success("New SAP product added successfully!", { autoClose: 4000 });
       
       // Add the new SAP product to the list
       setSapProducts(prev => [...prev, res.data]);
@@ -240,7 +240,7 @@ const EntryProduct = () => {
       setCustomColor("");
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Error adding new SAP product!");
+      toast.error(err.response?.data?.message || "Error adding new SAP product!", { autoClose: 4000 });
     } finally {
       setNewSapLoading(false);
     }
@@ -265,7 +265,7 @@ const EntryProduct = () => {
         }
       );
       
-      toast.success("SAP product updated successfully!");
+      toast.success("SAP product updated successfully!", { autoClose: 4000 });
       
       // Update the SAP products list
       setSapProducts(prev => 
@@ -300,7 +300,7 @@ const EntryProduct = () => {
       setEditCustomColor("");
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Error updating SAP product!");
+      toast.error(err.response?.data?.message || "Error updating SAP product!", { autoClose: 4000 });
     } finally {
       setEditSapLoading(false);
     }
@@ -308,15 +308,26 @@ const EntryProduct = () => {
 
   const handleDeleteSap = async (sapName, isCustom) => {
     try {
-      // Proceed with deletion
+      // First, delete all entries associated with this SAP product
+      const associatedEntries = entries.filter(entry => entry.sap_name === sapName);
+      
+      // Delete each associated entry
+      for (const entry of associatedEntries) {
+        await axiosInstance.delete(API_PATHS.ENTRY_PRODUCTS.DELETE(entry.product_id));
+      }
+      
+      // Then delete the SAP product
       await axiosInstance.delete(API_PATHS.SAP_PRODUCTS.DELETE(sapName));
       
-      toast.success("SAP product deleted successfully!", {
-        autoClose: 3000
+      toast.success("SAP product and all associated entries deleted successfully!", {
+        autoClose: 5000
       });
       
       // Remove from the SAP products list
       setSapProducts(prev => prev.filter(product => product.sap_name !== sapName));
+      
+      // Refresh entries to reflect the deletions
+      fetchEntries();
       
       // If the deleted product is currently selected, clear the form
       if (formData.sap_name === sapName) {
@@ -333,7 +344,7 @@ const EntryProduct = () => {
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Error deleting SAP product!", {
-        autoClose: 3000
+        autoClose: 5000
       });
     }
   };
@@ -361,7 +372,7 @@ const EntryProduct = () => {
       // Show confirmation with warning about associated entries
       const confirmToast = ({ closeToast }) => (
         <div>
-          <p className="font-semibold">Warning: This SAP product is used in {entryCount} entries</p>
+          <p className="font-semibold">This SAP product is used in {entryCount} entries</p>
           <p className="text-sm text-red-600 mt-1">Deleting it will also delete all associated entries!</p>
           {!isCustom && (
             <div className="flex items-start mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
@@ -438,11 +449,11 @@ const EntryProduct = () => {
 
       if (editingId) {
         await axiosInstance.put(API_PATHS.ENTRY_PRODUCTS.PUT(editingId), payload);
-        toast.success("Entry updated successfully!");
+        toast.success("Entry updated successfully!", { autoClose: 4000 });
         setEditingId(null);
       } else {
         await axiosInstance.post(API_PATHS.ENTRY_PRODUCTS.POST, payload);
-        toast.success("Entry added successfully!");
+        toast.success("Entry added successfully!", { autoClose: 4000 });
       }
 
       setFormData({
@@ -459,7 +470,7 @@ const EntryProduct = () => {
       fetchEntries();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Error submitting entry!");
+      toast.error(err.response?.data?.message || "Error submitting entry!", { autoClose: 4000 });
     } finally {
       setLoading(false);
     }
@@ -477,7 +488,7 @@ const EntryProduct = () => {
       remarks: entry.remarks || "",
     });
     setEditingId(entry.product_id);
-    toast.info("Editing mode enabled");
+    toast.info("Editing mode enabled", { autoClose: 4000 });
   };
 
   const handleDelete = (id) => {
@@ -491,10 +502,10 @@ const EntryProduct = () => {
                 await axiosInstance.delete(API_PATHS.ENTRY_PRODUCTS.DELETE(id));
                 fetchEntries();
                 toast.dismiss();
-                toast.success("Product deleted successfully!");
+                toast.success("Product deleted successfully!", { autoClose: 4000 });
               } catch (err) {
                 console.error(err);
-                toast.error("Error deleting product!");
+                toast.error("Error deleting product!", { autoClose: 4000 });
               }
             }}
           >
@@ -519,7 +530,7 @@ const EntryProduct = () => {
         <Title text1="PRODUCT" text2="ENTRY" />
       </div>
 
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={4000} />
 
       <div className="flex justify-end my-4 gap-2">
         <button
