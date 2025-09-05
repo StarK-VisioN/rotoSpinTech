@@ -604,11 +604,14 @@ const EntryRawStock = () => {
   };
 
   // Delete a single color row (detail) - only from this specific entry
-  const handleDeleteColor = (order_id, detail_id) => {
+  const handleDeleteColor = (order_id, detail_id, color_name) => {
     const confirmToast = ({ closeToast }) => (
       <div>
-        <p>Are you sure you want to delete this color from this entry?</p>
-        <p className="text-sm text-gray-600 mt-1">This will only remove the color from this specific entry, not from other materials.</p>
+        <p>Are you sure you want to delete the color "{color_name}" from this entry?</p>
+        <p className="text-sm text-gray-600 mt-1">
+          This will only remove the color from this specific entry. 
+          If this color is not used in any other entries, it will be permanently deleted.
+        </p>
         <div className="flex justify-end mt-2 gap-2">
           <button
             className="bg-red-600 text-white px-2 py-1 rounded"
@@ -1284,7 +1287,7 @@ const EntryRawStock = () => {
 
                           <td className="px-4 py-2 border">
                             <button
-                              onClick={() => handleDeleteColor(entry.order_id, d.detail_id)}
+                              onClick={() => handleDeleteColor(entry.order_id, d.detail_id, d.color)}
                               className="text-red-600 hover:text-red-800"
                               title="Delete this color from this entry"
                             >

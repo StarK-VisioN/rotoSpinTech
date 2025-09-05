@@ -197,11 +197,19 @@ const deleteRawStock = async (req, res) => {
   }
 };
 
-// DELETE specific color (detail)
+// @desc Delete a specific color from a raw stock entry (only removes from this entry, not from colors table)
 // @route DELETE /api/raw-stock/:orderId/color/:detailId
 const deleteColorFromRawStock = async (req, res) => {
   try {
     const { orderId, detailId } = req.params;
+
+    // Get the color_id before deleting to check if it's a custom color
+    const colorCheck = await pool.query(
+      "SELECT color_id FROM entry_raw_stock_details WHERE detail_id = $1",
+      [detailId]
+    );
+
+    const colorId = colorCheck.rows[0]?.color_id;
 
     // delete specific detail row
     const result = await pool.query(
@@ -211,6 +219,22 @@ const deleteColorFromRawStock = async (req, res) => {
 
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Color entry not found" });
+    }
+
+    // Check if this color is used in any other entries
+    if (colorId) {
+      const usageCheck = await pool.query(
+        "SELECT COUNT(*) FROM entry_raw_stock_details WHERE color_id = $1",
+        [colorId]
+      );
+
+      // If this was the only usage of a custom color, delete it from colors table
+      if (parseInt(usageCheck.rows[0].count) === 0) {
+        await pool.query(
+          "DELETE FROM colors WHERE color_id = $1 AND is_custom = TRUE",
+          [colorId]
+        );
+      }
     }
 
     // recalculate totals for parent entry_raw_stock
@@ -274,7 +298,7 @@ const getColorsByMaterial = async (req, res) => {
   }
 };
 
-// @desc Delete colors by material name
+// @desc Delete colors by material name (only removes custom colors not used elsewhere)
 // @route DELETE /api/raw-stock/material/:materialName/colors
 const deleteColorsByMaterial = async (req, res) => {
   try {
@@ -292,17 +316,29 @@ const deleteColorsByMaterial = async (req, res) => {
       return res.status(404).json({ message: "No colors found for this material" });
     }
 
-    // Delete the color entries from details table
+    // Delete the color entries from details table for this material
     await pool.query(
       `DELETE FROM entry_raw_stock_details WHERE material_name = $1`,
       [materialName]
     );
 
-    // Delete the colors themselves (only custom colors)
-    await pool.query(
-      `DELETE FROM colors WHERE color_id = ANY($1) AND is_custom = TRUE`,
-      [colorIds]
-    );
+    // For each custom color, check if it's used elsewhere before deleting
+    for (const colorId of colorIds) {
+      if (colorId) {
+        const usageCheck = await pool.query(
+          `SELECT COUNT(*) FROM entry_raw_stock_details WHERE color_id = $1`,
+          [colorId]
+        );
+
+        // Only delete if this color is not used in any other materials
+        if (parseInt(usageCheck.rows[0].count) === 0) {
+          await pool.query(
+            `DELETE FROM colors WHERE color_id = $1 AND is_custom = TRUE`,
+            [colorId]
+          );
+        }
+      }
+    }
 
     res.json({ message: `Colors for material ${materialName} deleted successfully` });
   } catch (err) {
