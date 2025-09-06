@@ -1,11 +1,11 @@
 const pool = require("../config/db");
 
-// @desc Get all SAP products
+// @desc Get all SAP products (only active ones)
 // @route GET /api/sap-products
 const getSapProducts = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM sap_products ORDER BY is_custom, sap_name"
+      "SELECT * FROM sap_products WHERE is_active = TRUE ORDER BY is_custom, sap_name"
     );
     res.json(result.rows);
   } catch (err) {
@@ -24,18 +24,30 @@ const createSapProduct = async (req, res) => {
       return res.status(400).json({ message: "SAP name, part description, and unit are required" });
     }
 
-    // Check if SAP product already exists
+    // Check if SAP product already exists (including inactive ones)
     const existingProduct = await pool.query(
       "SELECT * FROM sap_products WHERE LOWER(sap_name) = LOWER($1)",
       [sap_name]
     );
 
     if (existingProduct.rows.length > 0) {
+      // If exists but inactive, reactivate it with updated details
+      if (!existingProduct.rows[0].is_active) {
+        await pool.query(
+          "UPDATE sap_products SET is_active = TRUE, part_description = $1, unit = $2, color = $3, remarks = $4 WHERE sap_name = $5",
+          [part_description, unit, color, remarks, sap_name]
+        );
+        const reactivatedProduct = await pool.query(
+          "SELECT * FROM sap_products WHERE sap_name = $1",
+          [sap_name]
+        );
+        return res.status(200).json(reactivatedProduct.rows[0]);
+      }
       return res.status(400).json({ message: "SAP product already exists" });
     }
 
     const result = await pool.query(
-      "INSERT INTO sap_products (sap_name, part_description, unit, color, remarks, is_custom) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING *",
+      "INSERT INTO sap_products (sap_name, part_description, unit, color, remarks, is_custom, is_active) VALUES ($1, $2, $3, $4, $5, TRUE, TRUE) RETURNING *",
       [sap_name, part_description, unit, color, remarks]
     );
 
@@ -60,7 +72,7 @@ const updateSapProduct = async (req, res) => {
     // Check if new SAP name already exists (if changing name)
     if (new_sap_name.toLowerCase() !== sap_name.toLowerCase()) {
       const existingProduct = await pool.query(
-        "SELECT * FROM sap_products WHERE LOWER(sap_name) = LOWER($1)",
+        "SELECT * FROM sap_products WHERE LOWER(sap_name) = LOWER($1) AND is_active = TRUE",
         [new_sap_name]
       );
 
@@ -85,7 +97,7 @@ const updateSapProduct = async (req, res) => {
   }
 };
 
-// @desc Delete a SAP product
+// @desc Delete a SAP product (soft delete)
 // @route DELETE /api/sap-products/:sap_name
 const deleteSapProduct = async (req, res) => {
   try {
@@ -97,14 +109,10 @@ const deleteSapProduct = async (req, res) => {
       [sap_name]
     );
 
-    if (parseInt(usageCheck.rows[0].count) > 0) {
-      return res.status(400).json({ 
-        message: "Cannot delete SAP product that is used in entries" 
-      });
-    }
-
+    // Always do soft delete to preserve historical data
+    // Just mark as inactive instead of deleting
     const result = await pool.query(
-      "DELETE FROM sap_products WHERE sap_name = $1 RETURNING *",
+      "UPDATE sap_products SET is_active = FALSE WHERE sap_name = $1 RETURNING *",
       [sap_name]
     );
 
@@ -112,7 +120,13 @@ const deleteSapProduct = async (req, res) => {
       return res.status(404).json({ message: "SAP product not found" });
     }
 
-    res.json({ message: "SAP product deleted successfully" });
+    if (parseInt(usageCheck.rows[0].count) > 0) {
+      return res.json({ 
+        message: "SAP product removed from options (still used in entries)" 
+      });
+    }
+
+    res.json({ message: "SAP product removed from options" });
   } catch (err) {
     console.error("Delete SAP Product Error:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });

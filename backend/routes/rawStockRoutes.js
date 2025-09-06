@@ -26,7 +26,7 @@ router.put("/:id", protect, updateRawStock);
 router.delete("/:id", protect, deleteRawStock);
 
 // new route for deleting specific color detail
-router.delete("/:orderId/color/:detailId", protect, deleteColorFromRawStock);
+// router.delete("/:orderId/color/:detailId", protect, deleteColorFromRawStock);
 
 // Add these new routes
 router.get("/material-grades", protect, getMaterialGrades);

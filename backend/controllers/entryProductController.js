@@ -2,8 +2,6 @@ const pool = require("../config/db");
 
 // @desc Add new entry product
 // @route POST /api/entry-products
-// @desc Add new entry product
-// @route POST /api/entry-products
 const createEntryProduct = async (req, res) => {
   try {
     const { client_name, sap_name, quantity, part_description, unit, remarks, color } = req.body;
@@ -19,6 +17,8 @@ const createEntryProduct = async (req, res) => {
       [sap_name]
     );
 
+    let finalColor = color || 'NA';
+    
     if (sapCheck.rows.length === 0) {
       // Create new SAP product if it doesn't exist
       if (!part_description || !unit) {
@@ -28,16 +28,21 @@ const createEntryProduct = async (req, res) => {
       }
 
       await pool.query(
-        `INSERT INTO sap_products (sap_name, part_description, unit, remarks, color) 
-         VALUES ($1, $2, $3, $4, $5)`,
-        [sap_name, part_description, unit, remarks || null, color || 'NA']
+        `INSERT INTO sap_products (sap_name, part_description, unit, remarks, color, is_custom, is_active) 
+         VALUES ($1, $2, $3, $4, $5, TRUE, TRUE)`,
+        [sap_name, part_description, unit, remarks || null, finalColor]
       );
+    } else {
+      // Use the color from the existing SAP product if not provided
+      if (!finalColor || finalColor === 'NA') {
+        finalColor = sapCheck.rows[0].color || 'NA';
+      }
     }
 
-    // Create the entry product
+    // Create the entry product with color
     const result = await pool.query(
-      `INSERT INTO entry_products (client_name, sap_name, quantity) VALUES ($1, $2, $3) RETURNING *`,
-      [client_name, sap_name, quantity]
+      `INSERT INTO entry_products (client_name, sap_name, quantity, color) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [client_name, sap_name, quantity, finalColor]
     );
 
     res.status(201).json(result.rows[0]);
@@ -52,10 +57,12 @@ const createEntryProduct = async (req, res) => {
 const getEntryProducts = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT e.product_id, e.client_name, e.sap_name, e.quantity, e.created_at,
-              s.part_description, s.unit, s.remarks, s.color
+      `SELECT e.product_id, e.client_name, e.sap_name, e.quantity, e.color, e.created_at,
+              COALESCE(s.part_description, 'N/A') as part_description,
+              COALESCE(s.unit, 'N/A') as unit,
+              COALESCE(s.remarks, '') as remarks
        FROM entry_products e
-       JOIN sap_products s ON e.sap_name = s.sap_name
+       LEFT JOIN sap_products s ON e.sap_name = s.sap_name
        ORDER BY e.created_at DESC`
     );
     res.json(result.rows);
@@ -70,14 +77,14 @@ const getEntryProducts = async (req, res) => {
 const updateEntryProduct = async (req, res) => {
   try {
     const { product_id } = req.params;
-    const { client_name, sap_name, quantity } = req.body;
+    const { client_name, sap_name, quantity, color } = req.body;
 
     const result = await pool.query(
       `UPDATE entry_products
-       SET client_name=$1, sap_name=$2, quantity=$3
-       WHERE product_id=$4
+       SET client_name=$1, sap_name=$2, quantity=$3, color=$4
+       WHERE product_id=$5
        RETURNING *`,
-      [client_name, sap_name, quantity, product_id]
+      [client_name, sap_name, quantity, color || 'NA', product_id]
     );
 
     if (result.rows.length === 0) {

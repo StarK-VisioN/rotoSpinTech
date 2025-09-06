@@ -611,49 +611,49 @@ const handleSubmit = async (e) => {
   };
 
   // Delete a single color row (detail) - only from this specific entry
-  const handleDeleteColor = (order_id, detail_id, color_name) => {
-    const confirmToast = ({ closeToast }) => (
-      <div>
-        <p>Are you sure you want to delete the color "{color_name}" from this entry?</p>
-        <p className="text-sm text-gray-600 mt-1">
-          This will only remove the color from this specific entry. 
-          If this color is not used in any other entries, it will be permanently deleted.
-        </p>
-        <div className="flex justify-end mt-2 gap-2">
-          <button
-            className="bg-red-600 text-white px-2 py-1 rounded"
-            onClick={async () => {
-              try {
-                setLoading(true);
-                const token = getToken();
-                await axios.delete(`${BASE_URL}/api/raw-stock/${order_id}/color/${detail_id}`, {
-                  headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                });
-                fetchEntries();
-                toast.dismiss();
-                toast.success("Color removed from this entry successfully!", { autoClose: 4000 });
-              } catch (err) {
-                console.error("Delete Color Error:", err.response?.data || err.message);
-                if (err.response?.status === 404) toast.error("Color not found or already deleted", { autoClose: 4000 });
-                else toast.error("Error deleting color!", { autoClose: 4000 });
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            Yes
-          </button>
-          <button
-            className="bg-gray-300 px-2 py-1 rounded"
-            onClick={() => toast.dismiss()}
-          >
-            No
-          </button>
-        </div>
-      </div>
-    );
-    toast.info(confirmToast, { autoClose: false });
-  };
+  // const handleDeleteColor = (order_id, detail_id, color_name) => {
+  //   const confirmToast = ({ closeToast }) => (
+  //     <div>
+  //       <p>Are you sure you want to delete the color "{color_name}" from this entry?</p>
+  //       <p className="text-sm text-gray-600 mt-1">
+  //         This will only remove the color from this specific entry. 
+  //         If this color is not used in any other entries, it will be permanently deleted.
+  //       </p>
+  //       <div className="flex justify-end mt-2 gap-2">
+  //         <button
+  //           className="bg-red-600 text-white px-2 py-1 rounded"
+  //           onClick={async () => {
+  //             try {
+  //               setLoading(true);
+  //               const token = getToken();
+  //               await axios.delete(`${BASE_URL}/api/raw-stock/${order_id}/color/${detail_id}`, {
+  //                 headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  //               });
+  //               fetchEntries();
+  //               toast.dismiss();
+  //               toast.success("Color removed from this entry successfully!", { autoClose: 4000 });
+  //             } catch (err) {
+  //               console.error("Delete Color Error:", err.response?.data || err.message);
+  //               if (err.response?.status === 404) toast.error("Color not found or already deleted", { autoClose: 4000 });
+  //               else toast.error("Error deleting color!", { autoClose: 4000 });
+  //             } finally {
+  //               setLoading(false);
+  //             }
+  //           }}
+  //         >
+  //           Yes
+  //         </button>
+  //         <button
+  //           className="bg-gray-300 px-2 py-1 rounded"
+  //           onClick={() => toast.dismiss()}
+  //         >
+  //           No
+  //         </button>
+  //       </div>
+  //     </div>
+  //   );
+  //   toast.info(confirmToast, { autoClose: false });
+  // };
 
   return (
     <div>
@@ -1237,6 +1237,7 @@ const handleSubmit = async (e) => {
 )}
 
 {/* Table with loading state */}
+{/* Table with loading state */}
 <div className="overflow-x-auto mt-6">
   {loadingEntries ? (
     <div className="flex justify-center items-center py-20">
@@ -1261,14 +1262,14 @@ const handleSubmit = async (e) => {
           <th className="px-4 py-2 border">Total Amount</th>
           <th className="px-4 py-2 border">Remarks</th>
           <th className="px-4 py-2 border">Edit</th>
-          <th className="px-4 py-2 border">Delete Color</th>
+          {/* REMOVED: Delete Color column */}
           <th className="px-4 py-2 border">Delete Group</th>
         </tr>
       </thead>
       <tbody className="text-center">
         {entries.length === 0 ? (
           <tr>
-            <td colSpan={14} className="py-4">
+            <td colSpan={13} className="py-4"> {/* Changed from 14 to 13 columns */}
               No entries yet
             </td>
           </tr>
@@ -1277,7 +1278,6 @@ const handleSubmit = async (e) => {
             const rows = entry.details || [];
             const rowSpan = Math.max(rows.length, 1);
 
-            // render per-color rows while showing group-level cells once with rowSpan
             return rows.length > 0 ? (
               rows.map((d, idx) => {
                 const isFirst = idx === 0;
@@ -1339,16 +1339,8 @@ const handleSubmit = async (e) => {
                       </button>
                     </td>
 
-                    <td className="px-4 py-2 border">
-                      <button
-                        onClick={() => handleDeleteColor(entry.order_id, d.detail_id, d.color)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Delete this color from this entry"
-                      >
-                        <Trash2 />
-                      </button>
-                    </td>
-
+                    {/* REMOVED: Delete Color button */}
+                    
                     {isFirst && (
                       <td className="px-4 py-2 border align-middle" rowSpan={rowSpan}>
                         <button
@@ -1382,12 +1374,12 @@ const handleSubmit = async (e) => {
                     <Edit2 />
                   </button>
                 </td>
+                {/* REMOVED: Delete Color button */}
                 <td className="px-4 py-2 border">
                   <button onClick={() => handleDeleteGroup(entry.order_id)} className="text-red-600 hover:text-red-800">
                     <Trash2 />
                   </button>
                 </td>
-                <td className="px-4 py-2 border" />
               </tr>
             );
           })
