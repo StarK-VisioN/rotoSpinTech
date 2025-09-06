@@ -39,17 +39,13 @@ function App() {
           <Route path="/" element={<Login />} />
 
           {/* Home */}
-          <Route
-            path="/home"
-            element={
+          <Route path="/home" element={
               <ProtectedRoute>
                 <Home />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/:role/home"
-            element={
+          <Route path="/:role/home" element={
               <ProtectedRoute>
                 <Home />
               </ProtectedRoute>
@@ -57,49 +53,37 @@ function App() {
           />
 
           {/* Common Pages */}
-          <Route
-            path="/material"
-            element={
+          <Route path="/material" element={
               <ProtectedRoute>
                 <Material />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/production"
-            element={
+          <Route path="/production" element={
               <ProtectedRoute>
                 <Production />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin/active-production"
-            element={
+          <Route path="/admin/active-production" element={
               <ProtectedRoute>
                 <Production />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/stockin"
-            element={
+          <Route path="/stockin" element={
               <ProtectedRoute>
                 <Stockin />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/stockout"
-            element={
+          <Route path="/stockout" element={
               <ProtectedRoute>
                 <Stockout />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/report"
-            element={
+          <Route path="/report" element={
               <ProtectedRoute>
                 <Report />
               </ProtectedRoute>
@@ -107,33 +91,25 @@ function App() {
           />
 
           {/* Admin Pages */}
-          <Route
-            path="/admin/entry-product"
-            element={
+          <Route path="/admin/entry-product" element={
               <ProtectedRoute>
                 <EntryProduct />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin/entry-raw-stock"
-            element={
+          <Route path="/admin/entry-raw-stock" element={
               <ProtectedRoute>
                 <EntryRawStock />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin/add-staff"
-            element={
+          <Route path="/admin/add-staff" element={
               <ProtectedRoute>
                 <AddStaff />
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin/prediction"
-            element={
+          <Route path="/admin/prediction" element={
               <ProtectedRoute>
                 <Prediction />
               </ProtectedRoute>
@@ -141,9 +117,7 @@ function App() {
           />
 
           {/* Manager Pages */}
-          <Route
-            path="/manager/prediction"
-            element={
+          <Route path="/manager/prediction" element={
               <ProtectedRoute>
                 <Prediction />
               </ProtectedRoute>

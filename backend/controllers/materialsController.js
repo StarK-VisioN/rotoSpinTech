@@ -1,11 +1,11 @@
 const pool = require("../config/db");
 
-// @desc Get all materials
+// @desc Get all materials (only active ones)
 // @route GET /api/materials
 const getMaterials = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM materials ORDER BY material_grade, material_code"
+      "SELECT * FROM materials WHERE is_active = TRUE ORDER BY material_grade, material_code"
     );
     res.json(result.rows);
   } catch (err) {
@@ -24,18 +24,30 @@ const createMaterial = async (req, res) => {
       return res.status(400).json({ message: "Material grade is required" });
     }
 
-    // Check if material with same grade AND code already exists
+    // Check if material with same grade AND code already exists (including inactive ones)
     const existingMaterial = await pool.query(
       "SELECT * FROM materials WHERE material_grade = $1 AND material_code = $2",
       [material_grade, material_code || null]
     );
 
     if (existingMaterial.rows.length > 0) {
+      // If exists but inactive, reactivate it
+      if (!existingMaterial.rows[0].is_active) {
+        await pool.query(
+          "UPDATE materials SET is_active = TRUE WHERE material_id = $1",
+          [existingMaterial.rows[0].material_id]
+        );
+        const reactivatedMaterial = await pool.query(
+          "SELECT * FROM materials WHERE material_id = $1",
+          [existingMaterial.rows[0].material_id]
+        );
+        return res.status(200).json(reactivatedMaterial.rows[0]);
+      }
       return res.status(400).json({ message: "Material with this grade and code combination already exists" });
     }
 
     const result = await pool.query(
-      "INSERT INTO materials (material_grade, material_code) VALUES ($1, $2) RETURNING *",
+      "INSERT INTO materials (material_grade, material_code, is_active) VALUES ($1, $2, TRUE) RETURNING *",
       [material_grade, material_code || null]
     );
 
@@ -82,7 +94,7 @@ const updateMaterial = async (req, res) => {
 
     // Check if another material with same grade AND code exists
     const duplicateCheck = await client.query(
-      "SELECT * FROM materials WHERE material_grade = $1 AND material_code = $2 AND material_id != $3",
+      "SELECT * FROM materials WHERE material_grade = $1 AND material_code = $2 AND material_id != $3 AND is_active = TRUE",
       [material_grade, material_code || null, id]
     );
 
@@ -95,18 +107,6 @@ const updateMaterial = async (req, res) => {
     const result = await client.query(
       "UPDATE materials SET material_grade = $1, material_code = $2 WHERE material_id = $3 RETURNING *",
       [material_grade, material_code || null, id]
-    );
-
-    // Update all related raw stock entries
-    await client.query(
-      "UPDATE entry_raw_stock SET material_grade = $1 WHERE material_grade = $2",
-      [material_grade, oldMaterialGrade]
-    );
-
-    // Update all related raw stock details
-    await client.query(
-      "UPDATE entry_raw_stock_details SET material_grade = $1 WHERE material_grade = $2",
-      [material_grade, oldMaterialGrade]
     );
 
     await client.query('COMMIT'); // Commit transaction
@@ -126,57 +126,32 @@ const updateMaterial = async (req, res) => {
   }
 };
 
-// @desc Delete a material
+// @desc Delete a material (soft delete)
 // @route DELETE /api/materials/:id
 const deleteMaterial = async (req, res) => {
-  const client = await pool.connect();
-  
   try {
-    await client.query('BEGIN'); // Start transaction
-
     const { id } = req.params;
 
-    // Check if material exists and get its details
-    const existingMaterial = await client.query(
+    // Check if material exists
+    const existingMaterial = await pool.query(
       "SELECT material_grade FROM materials WHERE material_id = $1",
       [id]
     );
 
     if (existingMaterial.rows.length === 0) {
-      await client.query('ROLLBACK');
       return res.status(404).json({ message: "Material not found" });
     }
 
-    const materialGrade = existingMaterial.rows[0].material_grade;
-
-    // Check if material is used in any raw stock entries
-    const usageCheck = await client.query(
-      "SELECT COUNT(*) FROM entry_raw_stock WHERE material_grade = $1",
-      [materialGrade]
-    );
-
-    if (parseInt(usageCheck.rows[0].count) > 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ 
-        message: "Cannot delete material that is used in raw stock entries. Delete the entries first." 
-      });
-    }
-
-    // Delete the material
-    await client.query(
-      "DELETE FROM materials WHERE material_id = $1",
+    // Soft delete - mark as inactive instead of deleting
+    await pool.query(
+      "UPDATE materials SET is_active = FALSE WHERE material_id = $1",
       [id]
     );
 
-    await client.query('COMMIT'); // Commit transaction
-    res.json({ message: "Material deleted successfully" });
-
+    res.json({ message: "Material removed from options successfully" });
   } catch (err) {
-    await client.query('ROLLBACK'); // Rollback transaction on error
     console.error("Delete Material Error:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });
-  } finally {
-    client.release();
   }
 };
 

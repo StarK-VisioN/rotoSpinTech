@@ -338,153 +338,92 @@ const EntryRawStock = () => {
     });
   };
 
-  // Remove a custom color from the database (only for saved custom colors)
-  const handleRemoveCustomColor = async (color_id, color_name) => {
-    try {
-      // Check if this is a saved custom color (not a temporary one)
-      if (color_id.toString().startsWith('custom-') || color_id.toString().startsWith('predefined-')) {
-        // This is a temporary color that hasn't been saved yet
-        handleRemoveColor(color_id);
-        return;
-      }
-      
-      const token = getToken();
-      const response = await axios.delete(`${BASE_URL}/api/colors/${color_id}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      
-      if (response.status === 200) {
-        toast.success(`Color "${color_name}" deleted successfully`, { autoClose: 4000 });
-        // Remove from form
-        handleRemoveColor(color_id);
-        // Refresh color options
-        fetchColors();
-      }
-    } catch (err) {
-      console.error("Delete Custom Color Error:", err.message);
-      if (err.response?.status === 404) {
-        toast.error("Color not found or already deleted", { autoClose: 4000 });
-      } else if (err.response?.status === 400) {
-        toast.error(err.response.data.message, { autoClose: 4000 });
-      } else {
-        toast.error("Error deleting custom color!", { autoClose: 4000 });
-      }
+// Remove a custom color from the options (soft delete)
+const handleRemoveCustomColor = async (color_id, color_name) => {
+  try {
+    // Check if this is a saved custom color (not a temporary one)
+    if (color_id.toString().startsWith('custom-') || color_id.toString().startsWith('predefined-')) {
+      // This is a temporary color that hasn't been saved yet
+      handleRemoveColor(color_id);
+      return;
     }
-  };
-
-  // Delete a material from the material options list
-  const handleDeleteMaterialOption = async (material_id, material_grade) => {
-    // Check if this material is used in any entries
-    const materialUsedInEntries = entries.some(entry => 
-      entry.material_grade === material_grade
-    );
     
-    if (materialUsedInEntries) {
-      // Show confirmation with warning about associated entries
-      const confirmToast = ({ closeToast }) => (
-        <div>
-          <p className="font-semibold">This material is used in existing entries</p>
-          <p className="text-sm text-red-600 mt-1">Deleting it will also delete all associated entries!</p>
-          <p className="text-sm mt-2">Are you sure you want to proceed?</p>
-          <div className="flex justify-end mt-3 gap-2">
-            <button className="bg-red-600 text-white px-3 py-1 rounded text-sm"
-              onClick={async () => {
-                try {
-                  const token = getToken();
-                  // First delete all entries that use this material
-                  const entriesToDelete = entries.filter(entry => 
-                    entry.material_grade === material_grade
-                  );
-                  
-                  // Delete each entry that uses this material
-                  for (const entry of entriesToDelete) {
-                    await axios.delete(`${BASE_URL}/api/raw-stock/${entry.order_id}`, {
-                      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                    });
-                  }
-                  
-                  // Then delete the material itself
-                  const response = await axios.delete(`${BASE_URL}/api/materials/${material_id}`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                  });
-                  
-                  if (response.status === 200) {
-                    toast.dismiss();
-                    toast.success(`Material "${material_grade}" and all associated entries deleted successfully!`, { autoClose: 5000 });
-                    fetchMaterials();
-                    fetchMaterialGrades();
-                    fetchEntries(); // Refresh entries to reflect deletions
-                  }
-                } catch (err) {
-                  console.error("Delete Material Option Error:", err.message);
-                  toast.dismiss();
-                  if (err.response?.status === 404) {
-                    toast.error("Material not found or already deleted", { autoClose: 4000 });
-                  } else if (err.response?.status === 400) {
-                    toast.error(err.response.data.message, { autoClose: 4000 });
-                  } else {
-                    toast.error("Error deleting material!", { autoClose: 4000 });
-                  }
-                }
-              }}
-            >
-              Yes, Delete All
-            </button>
-            <button className="bg-gray-300 px-3 py-1 rounded text-sm" onClick={() => toast.dismiss()}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      );
-      toast.info(confirmToast, { autoClose: false });
-    } else {
-      // No associated entries, use simpler confirmation
-      const confirmToast = ({ closeToast }) => (
-        <div>
-          <p>Are you sure you want to delete the material "{material_grade}"?</p>
-          <div className="flex justify-end mt-2 gap-2">
-            <button
-              className="bg-red-600 text-white px-2 py-1 rounded"
-              onClick={async () => {
-                try {
-                  const token = getToken();
-                  const response = await axios.delete(`${BASE_URL}/api/materials/${material_id}`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                  });
-                  
-                  if (response.status === 200) {
-                    toast.dismiss();
-                    toast.success(`Material "${material_grade}" deleted successfully`, { autoClose: 4000 });
-                    fetchMaterials();
-                    fetchMaterialGrades();
-                  }
-                } catch (err) {
-                  console.error("Delete Material Option Error:", err.message);
-                  toast.dismiss();
-                  if (err.response?.status === 404) {
-                    toast.error("Material not found or already deleted", { autoClose: 4000 });
-                  } else if (err.response?.status === 400) {
-                    toast.error(err.response.data.message, { autoClose: 4000 });
-                  } else {
-                    toast.error("Error deleting material!", { autoClose: 4000 });
-                  }
-                }
-              }}
-            >
-              Yes
-            </button>
-            <button
-              className="bg-gray-300 px-2 py-1 rounded"
-              onClick={() => toast.dismiss()}
-            >
-              No
-            </button>
-          </div>
-        </div>
-      );
-      toast.info(confirmToast, { autoClose: false });
+    const token = getToken();
+    const response = await axios.delete(`${BASE_URL}/api/colors/${color_id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    
+    if (response.status === 200) {
+      toast.success(`Color "${color_name}" removed from options successfully`, { autoClose: 4000 });
+      // Remove from form if it's currently selected
+      if (formData.colors.some(c => String(c.color_id) === String(color_id))) {
+        handleRemoveColor(color_id);
+      }
+      // Refresh color options
+      fetchColors();
     }
-  };
+  } catch (err) {
+    console.error("Delete Custom Color Error:", err.message);
+    if (err.response?.status === 404) {
+      toast.error("Color not found or already deleted", { autoClose: 4000 });
+    } else if (err.response?.status === 400) {
+      toast.error(err.response.data.message, { autoClose: 4000 });
+    } else {
+      toast.error("Error deleting color!", { autoClose: 4000 });
+    }
+  }
+};
+
+// Delete a material from the material options list (soft delete)
+const handleDeleteMaterialOption = async (material_id, material_grade) => {
+  const confirmToast = ({ closeToast }) => (
+    <div>
+      <p>Are you sure you want to remove the material "{material_grade}" from the options list?</p>
+      <p className="text-sm text-gray-600 mt-1">
+        This will only remove it from the selection options. Existing entries using this material will remain unchanged.
+      </p>
+      <div className="flex justify-end mt-2 gap-2">
+        <button
+          className="bg-red-600 text-white px-2 py-1 rounded"
+          onClick={async () => {
+            try {
+              const token = getToken();
+              const response = await axios.delete(`${BASE_URL}/api/materials/${material_id}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+              });
+              
+              if (response.status === 200) {
+                toast.dismiss();
+                toast.success(`Material "${material_grade}" removed from options successfully`, { autoClose: 4000 });
+                fetchMaterials();
+                fetchMaterialGrades();
+              }
+            } catch (err) {
+              console.error("Delete Material Option Error:", err.message);
+              toast.dismiss();
+              if (err.response?.status === 404) {
+                toast.error("Material not found or already deleted", { autoClose: 4000 });
+              } else if (err.response?.status === 400) {
+                toast.error(err.response.data.message, { autoClose: 4000 });
+              } else {
+                toast.error("Error deleting material!", { autoClose: 4000 });
+              }
+            }
+          }}
+        >
+          Yes
+        </button>
+        <button
+          className="bg-gray-300 px-2 py-1 rounded"
+          onClick={() => toast.dismiss()}
+        >
+          No
+        </button>
+      </div>
+    </div>
+  );
+  toast.info(confirmToast, { autoClose: false });
+};
 
   const handleKgChange = (color_id, value) => {
     // keep empty string when user clears input

@@ -1,11 +1,11 @@
 const pool = require("../config/db");
 
-// @desc Get all colors
+// @desc Get all colors (only active ones)
 // @route GET /api/colors
 const getColors = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM colors ORDER BY is_custom, color_name"
+      "SELECT * FROM colors WHERE is_active = TRUE ORDER BY is_custom, color_name"
     );
     res.json(result.rows);
   } catch (err) {
@@ -24,18 +24,30 @@ const createColor = async (req, res) => {
       return res.status(400).json({ message: "Color name is required" });
     }
 
-    // Check if color already exists
+    // Check if color already exists (including inactive ones)
     const existingColor = await pool.query(
       "SELECT * FROM colors WHERE LOWER(color_name) = LOWER($1)",
       [color_name]
     );
 
     if (existingColor.rows.length > 0) {
+      // If exists but inactive, reactivate it
+      if (!existingColor.rows[0].is_active) {
+        await pool.query(
+          "UPDATE colors SET is_active = TRUE WHERE color_id = $1",
+          [existingColor.rows[0].color_id]
+        );
+        const reactivatedColor = await pool.query(
+          "SELECT * FROM colors WHERE color_id = $1",
+          [existingColor.rows[0].color_id]
+        );
+        return res.status(200).json(reactivatedColor.rows[0]);
+      }
       return res.status(400).json({ message: "Color already exists" });
     }
 
     const result = await pool.query(
-      "INSERT INTO colors (color_name, is_custom) VALUES ($1, TRUE) RETURNING *",
+      "INSERT INTO colors (color_name, is_custom, is_active) VALUES ($1, TRUE, TRUE) RETURNING *",
       [color_name]
     );
 
@@ -46,7 +58,7 @@ const createColor = async (req, res) => {
   }
 };
 
-// @desc Delete a custom color
+// @desc Delete a color (soft delete)
 // @route DELETE /api/colors/:id
 const deleteColor = async (req, res) => {
   try {
@@ -59,11 +71,15 @@ const deleteColor = async (req, res) => {
     );
 
     if (parseInt(usageCheck.rows[0].count) > 0) {
-      return res.status(400).json({ 
-        message: "Cannot delete color that is used in stock entries" 
-      });
+      // Instead of preventing deletion, we'll do a soft delete
+      await pool.query(
+        "UPDATE colors SET is_active = FALSE WHERE color_id = $1",
+        [id]
+      );
+      return res.json({ message: "Color removed from options (still used in entries)" });
     }
 
+    // If not used anywhere, we can do a hard delete
     const result = await pool.query(
       "DELETE FROM colors WHERE color_id = $1 AND is_custom = TRUE RETURNING *",
       [id]
