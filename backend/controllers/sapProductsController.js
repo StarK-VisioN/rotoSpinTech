@@ -18,7 +18,7 @@ const getSapProducts = async (req, res) => {
 // @route POST /api/sap-products
 const createSapProduct = async (req, res) => {
   try {
-    const { sap_name, part_description, unit, color, remarks } = req.body;
+    const { sap_name, part_description, unit, color, remarks, weight_per_unit } = req.body;
 
     if (!sap_name || !part_description || !unit) {
       return res.status(400).json({ message: "SAP name, part description, and unit are required" });
@@ -34,8 +34,8 @@ const createSapProduct = async (req, res) => {
       // If exists but inactive, reactivate it with updated details
       if (!existingProduct.rows[0].is_active) {
         await pool.query(
-          "UPDATE sap_products SET is_active = TRUE, part_description = $1, unit = $2, color = $3, remarks = $4 WHERE sap_name = $5",
-          [part_description, unit, color, remarks, sap_name]
+          "UPDATE sap_products SET is_active = TRUE, part_description = $1, unit = $2, color = $3, remarks = $4, weight_per_unit = $5 WHERE sap_name = $6",
+          [part_description, unit, color, remarks, weight_per_unit, sap_name]
         );
         const reactivatedProduct = await pool.query(
           "SELECT * FROM sap_products WHERE sap_name = $1",
@@ -47,8 +47,8 @@ const createSapProduct = async (req, res) => {
     }
 
     const result = await pool.query(
-      "INSERT INTO sap_products (sap_name, part_description, unit, color, remarks, is_custom, is_active) VALUES ($1, $2, $3, $4, $5, TRUE, TRUE) RETURNING *",
-      [sap_name, part_description, unit, color, remarks]
+      "INSERT INTO sap_products (sap_name, part_description, unit, color, remarks, weight_per_unit, is_custom, is_active) VALUES ($1, $2, $3, $4, $5, $6, TRUE, TRUE) RETURNING *",
+      [sap_name, part_description, unit, color, remarks, weight_per_unit]
     );
 
     res.status(201).json(result.rows[0]);
@@ -63,7 +63,7 @@ const createSapProduct = async (req, res) => {
 const updateSapProduct = async (req, res) => {
   try {
     const { sap_name } = req.params;
-    const { new_sap_name, part_description, unit, color, remarks } = req.body;
+    const { new_sap_name, part_description, unit, color, remarks, weight_per_unit } = req.body;
 
     if (!new_sap_name || !part_description || !unit) {
       return res.status(400).json({ message: "SAP name, part description, and unit are required" });
@@ -82,8 +82,8 @@ const updateSapProduct = async (req, res) => {
     }
 
     const result = await pool.query(
-      "UPDATE sap_products SET sap_name = $1, part_description = $2, unit = $3, color = $4, remarks = $5 WHERE sap_name = $6 RETURNING *",
-      [new_sap_name, part_description, unit, color, remarks, sap_name]
+      "UPDATE sap_products SET sap_name = $1, part_description = $2, unit = $3, color = $4, remarks = $5, weight_per_unit = $6 WHERE sap_name = $7 RETURNING *",
+      [new_sap_name, part_description, unit, color, remarks, weight_per_unit, sap_name]
     );
 
     if (result.rowCount === 0) {

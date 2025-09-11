@@ -71,6 +71,7 @@ const EntryProduct = () => {
     unit: "",
     color: "",
     remarks: "",
+    weight_per_unit: "",
   });
 
   const [editSapData, setEditSapData] = useState({
@@ -80,6 +81,7 @@ const EntryProduct = () => {
     unit: "",
     color: "",
     remarks: "",
+    weight_per_unit: "",
     is_custom: false,
   });
 
@@ -210,7 +212,8 @@ const EntryProduct = () => {
       
       const res = await axiosInstance.post(API_PATHS.SAP_PRODUCTS.POST, {
         ...newSapData,
-        color: finalColor
+        color: finalColor,
+        weight_per_unit: parseFloat(newSapData.weight_per_unit) || 1.0
       });
       
       toast.success("New SAP product added successfully!", { autoClose: 4000 });
@@ -235,6 +238,7 @@ const EntryProduct = () => {
         unit: "",
         color: "",
         remarks: "",
+        weight_per_unit: "",
       });
       setShowCustomColorInput(false);
       setCustomColor("");
@@ -262,6 +266,7 @@ const EntryProduct = () => {
           unit: editSapData.unit,
           remarks: editSapData.remarks,
           color: finalColor,
+          weight_per_unit: parseFloat(editSapData.weight_per_unit) || 1.0
         }
       );
       
@@ -294,6 +299,7 @@ const EntryProduct = () => {
         unit: "",
         color: "",
         remarks: "",
+        weight_per_unit: "",
         is_custom: false,
       });
       setShowEditCustomColorInput(false);
@@ -307,36 +313,36 @@ const EntryProduct = () => {
   };
 
   const handleDeleteSap = async (sapName, isCustom) => {
-  try {
-    // Use soft delete API
-    await axiosInstance.delete(API_PATHS.SAP_PRODUCTS.DELETE(sapName));
-    
-    toast.success("SAP product removed from options successfully!", {
-      autoClose: 5000
-    });
-    
-    // Remove from the SAP products list
-    setSapProducts(prev => prev.filter(product => product.sap_name !== sapName));
-    
-    // If the deleted product is currently selected, clear the form
-    if (formData.sap_name === sapName) {
-      setFormData(prev => ({
-        ...prev,
-        sap_name: "",
-        part_description: "",
-        unit: "",
-        remarks: "",
-        color: "",
-        quantity: "",
-      }));
+    try {
+      // Use soft delete API
+      await axiosInstance.delete(API_PATHS.SAP_PRODUCTS.DELETE(sapName));
+      
+      toast.success("SAP product removed from options successfully!", {
+        autoClose: 5000
+      });
+      
+      // Remove from the SAP products list
+      setSapProducts(prev => prev.filter(product => product.sap_name !== sapName));
+      
+      // If the deleted product is currently selected, clear the form
+      if (formData.sap_name === sapName) {
+        setFormData(prev => ({
+          ...prev,
+          sap_name: "",
+          part_description: "",
+          unit: "",
+          remarks: "",
+          color: "",
+          quantity: "",
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error removing SAP product!", {
+        autoClose: 5000
+      });
     }
-  } catch (err) {
-    console.error(err);
-    toast.error(err.response?.data?.message || "Error removing SAP product!", {
-      autoClose: 5000
-    });
-  }
-};
+  };
 
   const openEditSapForm = (sapProduct) => {
     setEditSapData({
@@ -346,6 +352,7 @@ const EntryProduct = () => {
       unit: sapProduct.unit,
       color: sapProduct.color || "",
       remarks: sapProduct.remarks || "",
+      weight_per_unit: sapProduct.weight_per_unit || "",
       is_custom: sapProduct.is_custom || false,
     });
     setShowEditSapForm(true);
@@ -353,114 +360,114 @@ const EntryProduct = () => {
   };
 
   const confirmDeleteSap = (sapName, isCustom) => {
-  // Check if there are any associated entries
-  const associatedEntries = entries.filter(entry => entry.sap_name === sapName);
-  const entryCount = associatedEntries.length;
-  
-  if (entryCount > 0) {
-    // Show confirmation with info about soft deletion
-    const confirmToast = ({ closeToast }) => (
-      <div>
-        <p className="font-semibold">This SAP product is used in {entryCount} entries</p>
-        <p className="text-sm text-blue-600 mt-1">
-          It will be removed from selection options but all historical data (including color) will be preserved.
-        </p>
-        <p className="text-sm mt-2">Are you sure you want to proceed?</p>
-        <div className="flex justify-end mt-3 gap-2">
-          <button className="bg-red-600 text-white px-3 py-1 rounded text-sm"
-            onClick={async () => {
-              await handleDeleteSap(sapName, isCustom);
-              toast.dismiss();
-            }}
-          >
-            Yes, Remove from Options
-          </button>
-          <button className="bg-gray-300 px-3 py-1 rounded text-sm" onClick={() => toast.dismiss()}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-    toast.info(confirmToast, { autoClose: false });
-  } else {
-    // No associated entries, use simpler confirmation
-    const confirmToast = ({ closeToast }) => (
-      <div>
-        <p>Are you sure you want to remove this SAP product from options?</p>
-        <p className="text-sm text-blue-600 mt-1">
-          All product information will be preserved for historical records.
-        </p>
-        {!isCustom && (
-          <div className="flex items-start mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
-            <AlertTriangle size={16} className="text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
-            <p className="text-sm text-yellow-700">
-              This is a predefined SAP product. Removing it may affect system functionality.
-            </p>
+    // Check if there are any associated entries
+    const associatedEntries = entries.filter(entry => entry.sap_name === sapName);
+    const entryCount = associatedEntries.length;
+    
+    if (entryCount > 0) {
+      // Show confirmation with info about soft deletion
+      const confirmToast = ({ closeToast }) => (
+        <div>
+          <p className="font-semibold">This SAP product is used in {entryCount} entries</p>
+          <p className="text-sm text-blue-600 mt-1">
+            It will be removed from selection options but all historical data (including color) will be preserved.
+          </p>
+          <p className="text-sm mt-2">Are you sure you want to proceed?</p>
+          <div className="flex justify-end mt-3 gap-2">
+            <button className="bg-red-600 text-white px-3 py-1 rounded text-sm"
+              onClick={async () => {
+                await handleDeleteSap(sapName, isCustom);
+                toast.dismiss();
+              }}
+            >
+              Yes, Remove from Options
+            </button>
+            <button className="bg-gray-300 px-3 py-1 rounded text-sm" onClick={() => toast.dismiss()}>
+              Cancel
+            </button>
           </div>
-        )}
-        <div className="flex justify-end mt-2 gap-2">
-          <button className="bg-red-600 text-white px-2 py-1 rounded"
-            onClick={async () => {
-              await handleDeleteSap(sapName, isCustom);
-              toast.dismiss();
-            }}
-          >
-            Yes
-          </button>
-          <button className="bg-gray-300 px-2 py-1 rounded" onClick={() => toast.dismiss()}>
-            No
-          </button>
         </div>
-      </div>
-    );
-    toast.info(confirmToast, { autoClose: false });
-  }
-};
+      );
+      toast.info(confirmToast, { autoClose: false });
+    } else {
+      // No associated entries, use simpler confirmation
+      const confirmToast = ({ closeToast }) => (
+        <div>
+          <p>Are you sure you want to remove this SAP product from options?</p>
+          <p className="text-sm text-blue-600 mt-1">
+            All product information will be preserved for historical records.
+          </p>
+          {!isCustom && (
+            <div className="flex items-start mt-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+              <AlertTriangle size={16} className="text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-sm text-yellow-700">
+                This is a predefined SAP product. Removing it may affect system functionality.
+              </p>
+            </div>
+          )}
+          <div className="flex justify-end mt-2 gap-2">
+            <button className="bg-red-600 text-white px-2 py-1 rounded"
+              onClick={async () => {
+                await handleDeleteSap(sapName, isCustom);
+                toast.dismiss();
+              }}
+            >
+              Yes
+            </button>
+            <button className="bg-gray-300 px-2 py-1 rounded" onClick={() => toast.dismiss()}>
+              No
+            </button>
+          </div>
+        </div>
+      );
+      toast.info(confirmToast, { autoClose: false });
+    }
+  };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
+    e.preventDefault();
+    setLoading(true);
 
-  try {
-    const payload = {
-      client_name: formData.client_name,
-      sap_name: formData.sap_name,
-      quantity: Number(formData.quantity),
-      // Include these fields for creating new SAP products if needed
-      part_description: formData.part_description,
-      unit: formData.unit,
-      remarks: formData.remarks,
-      color: formData.color, // Make sure to include color
-    };
+    try {
+      const payload = {
+        client_name: formData.client_name,
+        sap_name: formData.sap_name,
+        quantity: Number(formData.quantity),
+        // Include these fields for creating new SAP products if needed
+        part_description: formData.part_description,
+        unit: formData.unit,
+        remarks: formData.remarks,
+        color: formData.color,
+      };
 
-    if (editingId) {
-      await axiosInstance.put(API_PATHS.ENTRY_PRODUCTS.PUT(editingId), payload);
-      toast.success("Entry updated successfully!", { autoClose: 4000 });
-      setEditingId(null);
-    } else {
-      await axiosInstance.post(API_PATHS.ENTRY_PRODUCTS.POST, payload);
-      toast.success("Entry added successfully!", { autoClose: 4000 });
+      if (editingId) {
+        await axiosInstance.put(API_PATHS.ENTRY_PRODUCTS.PUT(editingId), payload);
+        toast.success("Entry updated successfully!", { autoClose: 4000 });
+        setEditingId(null);
+      } else {
+        await axiosInstance.post(API_PATHS.ENTRY_PRODUCTS.POST, payload);
+        toast.success("Entry added successfully!", { autoClose: 4000 });
+      }
+
+      setFormData({
+        client_name: "AeroMarine",
+        sap_name: "",
+        part_description: "",
+        unit: "",
+        color: "",
+        quantity: "",
+        remarks: "",
+      });
+      setClientNameEditable(false);
+      setFormVisible(false);
+      fetchEntries();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error submitting entry!", { autoClose: 4000 });
+    } finally {
+      setLoading(false);
     }
-
-    setFormData({
-      client_name: "AeroMarine",
-      sap_name: "",
-      part_description: "",
-      unit: "",
-      color: "",
-      quantity: "",
-      remarks: "",
-    });
-    setClientNameEditable(false);
-    setFormVisible(false);
-    fetchEntries();
-  } catch (err) {
-    console.error(err);
-    toast.error(err.response?.data?.message || "Error submitting entry!", { autoClose: 4000 });
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleEdit = (entry) => {
     setFormVisible(true);
@@ -497,9 +504,9 @@ const EntryProduct = () => {
           >
             Yes
           </button>
-          <button className="bg-gray-300 px-2 py-1 rounded" onClick={() => toast.dismiss()}>
+                    <button className="bg-gray-300 px-2 py-1 rounded" onClick={() => toast.dismiss()}>
             No
-            </button>
+          </button>
         </div>
       </div>
     );
@@ -570,6 +577,7 @@ const EntryProduct = () => {
                         <th className="px-4 py-2 text-left">SAP Name</th>
                         <th className="px-4 py-2 text-left">Part Description</th>
                         <th className="px-4 py-2 text-left">Unit</th>
+                        <th className="px-4 py-2 text-left">Weight (kg)</th>
                         <th className="px-4 py-2 text-left">Color</th>
                         <th className="px-4 py-2 text-left">Remarks</th>
                         <th className="px-4 py-2 text-left">Type</th>
@@ -579,7 +587,7 @@ const EntryProduct = () => {
                     <tbody>
                       {sapProducts.length === 0 ? (
                         <tr>
-                          <td colSpan="7" className="px-4 py-4 text-center text-gray-500">
+                          <td colSpan="8" className="px-4 py-4 text-center text-gray-500">
                             No SAP products found
                           </td>
                         </tr>
@@ -589,6 +597,7 @@ const EntryProduct = () => {
                             <td className="px-4 py-3">{product.sap_name}</td>
                             <td className="px-4 py-3">{product.part_description}</td>
                             <td className="px-4 py-3">{product.unit}</td>
+                            <td className="px-4 py-3">{product.weight_per_unit ? `${product.weight_per_unit} kg` : "-"}</td>
                             <td className="px-4 py-3">
                               {product.color ? (
                                 <div className="flex items-center gap-2">
@@ -899,13 +908,28 @@ const EntryProduct = () => {
 
                 <div>
                   <label className="block font-semibold mb-1">Unit *</label>
-                  <input
+                                    <input
                     type="text"
                     name="unit"
                     value={newSapData.unit}
                     onChange={handleNewSapChange}
                     className="border p-1 rounded w-full"
                     required
+                  />
+                </div>
+
+                {/* Weight per Unit Field */}
+                <div>
+                  <label className="block font-semibold mb-1">Weight per Unit (kg) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="weight_per_unit"
+                    value={newSapData.weight_per_unit}
+                    onChange={handleNewSapChange}
+                    className="border p-1 rounded w-full"
+                    required
+                    placeholder="e.g., 52.0"
                   />
                 </div>
 
@@ -1042,6 +1066,21 @@ const EntryProduct = () => {
                     onChange={handleEditSapChange}
                     className="border p-1 rounded w-full"
                     required
+                  />
+                </div>
+
+                {/* Weight per Unit Field */}
+                <div>
+                  <label className="block font-semibold mb-1">Weight per Unit (kg) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="weight_per_unit"
+                    value={editSapData.weight_per_unit}
+                    onChange={handleEditSapChange}
+                    className="border p-1 rounded w-full"
+                    required
+                    placeholder="e.g., 52.0"
                   />
                 </div>
 
@@ -1182,23 +1221,23 @@ const EntryProduct = () => {
 
                     {/* Color column - updated to show "-" for empty values and proper white color */}
                     <td className="px-4 py-2 border">
-  {entry.color && entry.color !== "NA" ? (
-    <div className="flex justify-center gap-1">
-      {entry.color.split("/").map((c, idx) => (
-        <div
-          key={idx}
-          className="w-6 h-6 rounded-full border border-gray-300"
-          style={{ 
-            backgroundColor: colorMap[c.trim().toLowerCase()] || "#ccc",
-            borderColor: c.trim().toLowerCase() === 'white' ? '#ccc' : 'border-gray-300'
-          }}
-        ></div>
-      ))}
-    </div>
-  ) : (
-    <span>-</span>
-  )}
-</td>
+                      {entry.color && entry.color !== "NA" ? (
+                        <div className="flex justify-center gap-1">
+                          {entry.color.split("/").map((c, idx) => (
+                            <div
+                              key={idx}
+                              className="w-6 h-6 rounded-full border border-gray-300"
+                              style={{ 
+                                backgroundColor: colorMap[c.trim().toLowerCase()] || "#ccc",
+                                borderColor: c.trim().toLowerCase() === 'white' ? '#ccc' : 'border-gray-300'
+                              }}
+                            ></div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span>-</span>
+                      )}
+                    </td>
 
                     <td className="px-4 py-2 border">{entry.quantity}</td>
                     <td className="px-4 py-2 border whitespace-nowrap">

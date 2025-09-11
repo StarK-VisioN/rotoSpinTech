@@ -4,7 +4,7 @@ const pool = require("../config/db");
 // @route POST /api/entry-products
 const createEntryProduct = async (req, res) => {
   try {
-    const { client_name, sap_name, quantity, part_description, unit, remarks, color } = req.body;
+    const { client_name, sap_name, quantity, part_description, unit, remarks, color, weight_per_unit } = req.body;
 
     // validate required fields
     if (!client_name || !sap_name || !quantity) {
@@ -18,6 +18,7 @@ const createEntryProduct = async (req, res) => {
     );
 
     let finalColor = color || 'NA';
+    let finalWeight = weight_per_unit || 1.0; // Default weight if not provided
     
     if (sapCheck.rows.length === 0) {
       // Create new SAP product if it doesn't exist
@@ -28,9 +29,9 @@ const createEntryProduct = async (req, res) => {
       }
 
       await pool.query(
-        `INSERT INTO sap_products (sap_name, part_description, unit, remarks, color, is_custom, is_active) 
-         VALUES ($1, $2, $3, $4, $5, TRUE, TRUE)`,
-        [sap_name, part_description, unit, remarks || null, finalColor]
+        `INSERT INTO sap_products (sap_name, part_description, unit, remarks, color, weight_per_unit, is_custom, is_active) 
+         VALUES ($1, $2, $3, $4, $5, $6, TRUE, TRUE)`,
+        [sap_name, part_description, unit, remarks || null, finalColor, finalWeight]
       );
     } else {
       // Use the color from the existing SAP product if not provided
